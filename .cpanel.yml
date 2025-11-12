@@ -1,4 +1,4 @@
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/umarzpgk/public_html/
+    - export DEPLOYPATH=/home/umarzpgk/tool.umarakbar.com/
     - /bin/cp -R * $DEPLOYPATH
