@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teleprompter Web App</title>
+  <style>
+    body {
+      background: #0d0d0d;
+      color: white;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      /* overflow: hidden; */ /* remove or comment this out */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    textarea {
+      width: 80%;
+      height: 50%;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 1.2rem;
+      resize: none;
+      direction: inherit;
+    }
+
+    #displayText {
+      width: 80%;
+      height: 70%;
+      overflow: hidden;
+      position: relative;
+      font-size: 2rem;
+      text-align: start;
+      line-height: 1.8;
+      display: none;
+    }
+
+    #textContent {
+      position: absolute;
+      width: 100%;
+      transition: transform 0.05s linear;
+    }
+
+.controls {
+  position: fixed;
+  bottom: env(safe-area-inset-bottom, 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(25, 25, 25, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: clamp(6px, 2vw, 10px) clamp(10px, 4vw, 20px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2vw, 14px);
+  z-index: 100;
+  width: calc(100% - 20px);
+  max-width: 620px;
+  box-sizing: border-box;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+}
+
+
+.controls button, .controls input[type=checkbox], .controls label {
+  cursor: pointer;
+  color: #484848;
+}
+
+.controls label {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.controls input[type=range] {
+  width: 100px;
+  accent-color: #00bcd4;
+}
+
+  </style>
+  <link rel="manifest" href="manifest.json">
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
+</script>
+</head>
+<body>
+  <textarea id="scriptInput" placeholder="Paste or write your script here..."></textarea>
+
+  <div id="displayText">
+    <div id="textContent"></div>
+  </div>
+
+  <div class="controls">
+  <button id="playPause">Play</button>
+
+  <label>Speed</label>
+  <input type="range" id="speedControl" min="1" max="10" step="0.5" value="3">
+
+  <label>Text Size</label>
+  <input type="range" id="fontSizeControl" min="14" max="80" step="2" value="32">
+
+  <label><input type="checkbox" id="mirrorToggle"> Mirror</label>
+  <label><input type="checkbox" id="autoRepeat"> Repeat</label>
+
+  <button id="editButton" style="display:none;">Edit</button>
+</div>
+
+
+  <script>
+const playPauseBtn = document.getElementById("playPause");
+const speedControl  = document.getElementById("speedControl");
+const fontSizeControl = document.getElementById("fontSizeControl");
+const mirrorToggle  = document.getElementById("mirrorToggle");
+const autoRepeat    = document.getElementById("autoRepeat");
+const editButton    = document.getElementById("editButton");
+const scriptInput   = document.getElementById("scriptInput");
+const displayText   = document.getElementById("displayText");
+const textContent   = document.getElementById("textContent");
+
+let isPlaying   = false;
+let scrollY     = 0;
+let scrollSpeed = parseFloat(speedControl.value);
+let scrollTimer = null;
+
+function applyTransform() {
+  const mirror = mirrorToggle.checked ? "scaleX(-1)" : "scaleX(1)";
+  textContent.style.transform = `${mirror} translateY(${scrollY}px)`;
+}
+
+function startScroll() {
+  const text = scriptInput.value.trim();
+  if (!text) return;
+
+  textContent.innerText = text;
+  displayText.style.display = "block";
+  scriptInput.style.display = "none";
+  editButton.style.display  = "inline-block";
+  playPauseBtn.textContent  = "Pause";
+  isPlaying = true;
+  scrollY = 0;
+  applyTransform();
+
+  clearInterval(scrollTimer);
+  scrollTimer = setInterval(() => {
+    scrollY -= scrollSpeed;
+    applyTransform();
+
+    const maxScroll = textContent.scrollHeight - displayText.clientHeight;
+    if (Math.abs(scrollY) >= maxScroll) {
+      if (autoRepeat.checked) {
+        scrollY = 0;
+        applyTransform();
+      } else {
+        pauseScroll();
+      }
+    }
+  }, 30);
+}
+
+function pauseScroll() {
+  clearInterval(scrollTimer);
+  scrollTimer = null;
+  isPlaying = false;
+  playPauseBtn.textContent = "Play";
+}
+
+function togglePlay() { isPlaying ? pauseScroll() : startScroll(); }
+function enableEdit() {
+  pauseScroll();
+  displayText.style.display = "none";
+  scriptInput.style.display = "block";
+  editButton.style.display  = "none";
+}
+
+playPauseBtn.addEventListener("click", togglePlay);
+editButton.addEventListener("click", enableEdit);
+
+speedControl.addEventListener("input", () => {
+  scrollSpeed = parseFloat(speedControl.value);
+});
+fontSizeControl.addEventListener("input", () => {
+  textContent.style.fontSize = `${fontSizeControl.value}px`;
+});
+mirrorToggle.addEventListener("change", applyTransform);
+scriptInput.addEventListener("input", () => {
+  const sample = scriptInput.value.slice(0,10);
+  document.body.dir = /[\u0600-\u06FF]/.test(sample) ? "rtl" : "ltr";
+});
+
+// Keyboard shortcuts
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+  else if (e.code === "ArrowUp") {
+    speedControl.value = Math.min(10, +speedControl.value + 0.5);
+    scrollSpeed = +speedControl.value;
+  } else if (e.code === "ArrowDown") {
+    speedControl.value = Math.max(1, +speedControl.value - 0.5);
+    scrollSpeed = +speedControl.value;
+  } else if (e.code === "ArrowRight") {
+    const s = parseFloat(getComputedStyle(textContent).fontSize);
+    textContent.style.fontSize = `${s + 2}px`;
+  } else if (e.code === "ArrowLeft") {
+    const s = parseFloat(getComputedStyle(textContent).fontSize);
+    textContent.style.fontSize = `${Math.max(10, s - 2)}px`;
+  }
+});
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+  .then(() => console.log("Service Worker Registered"))
+  .catch(err => console.log("SW registration failed: ", err));
+}
+</script>
+
+</body>
+</html>
