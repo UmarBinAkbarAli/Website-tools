@@ -1,8 +1,6 @@
-// =====================================
 // auth.js – Firebase Authentication
-// =====================================
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { app } from './firebase.js';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -11,22 +9,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-// =============================
-// Your Firebase Config
-// =============================
-const firebaseConfig = {
-  apiKey: "AIzaSyDXsrypUfViIDCdK5Bs0H-P-J9KXYONajU",
-  authDomain: "umar-tools-27994.firebaseapp.com",
-  projectId: "umar-tools-27994",
-  storageBucket: "umar-tools-27994.firebasestorage.app",
-  messagingSenderId: "269972336658",
-  appId: "1:269972336658:web:0fbcd8ecd1047b888e68cb"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
 let callbacks = [];
 
 export function initAuth() {

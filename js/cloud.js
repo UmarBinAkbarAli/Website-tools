@@ -1,8 +1,6 @@
-// =====================================
 // cloud.js – Firestore Cloud Sync
-// =====================================
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { app } from './firebase.js';
 import {
   getFirestore,
   collection,
@@ -12,17 +10,6 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-// Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyDXsrypUfViIDCdK5Bs0H-P-J9KXYONajU",
-  authDomain: "umar-tools-27994.firebaseapp.com",
-  projectId: "umar-tools-27994",
-  storageBucket: "umar-tools-27994.firebasestorage.app",
-  messagingSenderId: "269972336658",
-  appId: "1:269972336658:web:0fbcd8ecd1047b888e68cb"
-};
-
-const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export async function saveCloudScript(user, script) {
