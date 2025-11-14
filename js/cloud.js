@@ -1,5 +1,3 @@
-// cloud.js – Firestore Cloud Sync
-
 import { app } from './firebase.js';
 import {
   getFirestore,
@@ -20,7 +18,6 @@ export async function saveCloudScript(user, script) {
     text: script.text,
     updatedAt: Date.now()
   });
-  return id;
 }
 
 export async function loadCloudScripts(user) {

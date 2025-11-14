@@ -104,3 +104,53 @@ textarea#scriptInput{
   border: 0;
   cursor: pointer;
 }
+
+/* Shortcut overlay (expanded full set) */
+.shortcut-overlay {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  z-index: 4000;
+  max-width: calc(100% - 24px);
+  padding: 6px;
+  pointer-events: auto;
+}
+.shortcut-overlay button {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: white;
+  font-size: 12px;
+  padding: 6px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  line-height:1;
+  min-width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition: transform .08s, background .12s;
+}
+.shortcut-overlay button:hover { transform: translateY(-2px); background: rgba(255,255,255,0.14); }
+
+/* tooltip */
+.shortcut-overlay button:hover::after{
+  content: attr(data-tip);
+  position: absolute;
+  top: 36px;
+  right: 0;
+  background: rgba(0,0,0,0.9);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index:5000;
+  pointer-events:none;
+}
+
+/* hide overlay slightly when playing to avoid distraction */
+.shortcut-overlay.dim { opacity:0.28; transform: translateY(-4px); }
