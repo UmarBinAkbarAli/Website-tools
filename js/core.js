@@ -2,16 +2,14 @@ import {
   initAuth,
   onAuthReady,
   signInGoogle,
-  signInGuest,
   getCurrentUser,
   signOutUser
 } from './auth.js';
 
-
+import { analytics_log } from './analytics.js';
 import * as cloud from './cloud.js';
-
 import {setupGestures} from './gestures.js';
-import {setupScripts} from './scripts.js';
+import {setupScripts, renderScripts} from './scripts.js';
 import {ensureFullscreenToggle} from './fullscreen.js';
 
 const playPauseBtn = document.getElementById('playPause');
@@ -33,7 +31,8 @@ let hideTimeout = null;
 
 controls.classList.remove('hidden');
 
-// ------------------- AUTH INIT ---------------------
+
+// ==================== AUTH INIT =====================
 initAuth();
 
 onAuthReady(async (user) => {
@@ -43,28 +42,27 @@ onAuthReady(async (user) => {
   const logoutBtn = document.getElementById("logoutBtn");
 
   if (user) {
-    // Show signed-in state
     status.innerHTML = "Signed in as: " + (user.email || "Google User");
-
-    // Auto-close login modal
     document.getElementById("authPanel").setAttribute("aria-hidden", "true");
-
-    // Enable logout button
     logoutBtn.style.display = "inline-block";
 
-    // Load cloud scripts
+    analytics_log("auth_sign_in", { uid: user.uid });
+
+    // Refresh scripts from cloud
     await loadCloudScriptsIntoLocal();
   } 
   else {
     status.innerHTML = "Not signed in";
-
-    // Hide logout button
     logoutBtn.style.display = "none";
+
+    analytics_log("auth_sign_out", {});
   }
 });
 
+// ======================================================
 
-// -----------------------------------------------------
+
+// ================== TELEPROMPTER FUNCTIONS ==================
 
 function applyTransform(){
   const mirror = mirrorToggle && mirrorToggle.checked ? 'scaleX(-1)' : 'scaleX(1)';
@@ -112,6 +110,8 @@ function startScroll(){
     }
   }, 30);
 
+  analytics_log("play_toggle", { playing: true });
+
   showControlsTemporarily(false, 1500);
 }
 
@@ -121,6 +121,9 @@ function pauseScroll(){
   isPlaying = false;
   playPauseBtn.textContent = 'Play';
   ensureFullscreenToggle(false);
+
+  analytics_log("play_toggle", { playing: false });
+
   showControlsTemporarily(true);
 }
 
@@ -146,6 +149,7 @@ function showControlsTemporarily(visible=true, duration=3000){
   }, duration);
 }
 
+// click display to show controls
 displayText.addEventListener('click', ()=> {
   controls.classList.remove('hidden');
   if(isPlaying){
@@ -154,6 +158,7 @@ displayText.addEventListener('click', ()=> {
   }
 });
 
+// input handlers
 playPauseBtn.addEventListener('click', togglePlay);
 editButton.addEventListener('click', enableEdit);
 speedControl.addEventListener('input', ()=> { scrollSpeed = parseFloat(speedControl.value); });
@@ -165,11 +170,12 @@ scriptInput.addEventListener('input', ()=> {
   document.body.dir = /[\u0600-\u06FF]/.test(sample) ? 'rtl' : 'ltr';
 });
 
-// RESPONSIVE
+// keyboard support
 document.addEventListener('keydown', e => {
   if(e.code === 'Space'){ e.preventDefault(); togglePlay(); }
 });
 
+// responsive
 window.addEventListener('resize', ()=> {
   if(displayText.style.display !== 'none') autoFitFont();
 });
@@ -177,29 +183,36 @@ window.addEventListener('resize', ()=> {
 // INIT MODULES
 setupGestures({onTap:()=>{ togglePlay(); }, onSwipeUp:()=>{ speedControl.value = Math.min(10, +speedControl.value + 0.5); scrollSpeed = +speedControl.value; }, onSwipeDown:()=>{ speedControl.value = Math.max(1, +speedControl.value - 0.5); scrollSpeed = +speedControl.value; }, onPinchChange:(delta)=>{ let s = parseInt(getComputedStyle(textContent).fontSize); s = Math.max(12, Math.min(120, Math.round(s * delta))); textContent.style.fontSize = s + 'px'; fontSizeControl.value = s; }});
 
-setupScripts({ scriptInput, fileInput: document.getElementById('fileInput'), scriptsBtn: document.getElementById('scriptsBtn'), scriptsModal: document.getElementById('scriptsModal'), scriptsList: document.getElementById('scriptsList'), newScriptForm: document.getElementById('newScriptForm'), newTitle: document.getElementById('newTitle'), newText: document.getElementById('newText'), importBtn: document.getElementById('importBtn'), exportBtn: document.getElementById('exportBtn'), onLoadScript: (text)=>{ scriptInput.value = text; localStorage.setItem('teleprompter_script', text); }});
+// Load saved scripts module
+setupScripts({ 
+  scriptInput,
+  fileInput: document.getElementById('fileInput'),
+  scriptsBtn: document.getElementById('scriptsBtn'),
+  scriptsModal: document.getElementById('scriptsModal'),
+  scriptsList: document.getElementById('scriptsList'),
+  newScriptForm: document.getElementById('newScriptForm'),
+  newTitle: document.getElementById('newTitle'),
+  newText: document.getElementById('newText'),
+  importBtn: document.getElementById('importBtn'),
+  exportBtn: document.getElementById('exportBtn'),
+  onLoadScript: (text)=>{ scriptInput.value = text; localStorage.setItem('teleprompter_script', text); }
+});
 
 ensureFullscreenToggle(false);
 
-// Load saved script
-const saved = localStorage.getItem('teleprompter_script');
-if(saved) scriptInput.value = saved;
 
-// ------------------- CLOUD SYNC HELPER ---------------------
+// ====================== CLOUD SYNC ===========================
 async function loadCloudScriptsIntoLocal() {
   const user = getCurrentUser();
   if (!user) return;
 
   try {
-    // Load from cloud only
     const cloudList = await cloud.loadCloudScripts(user);
 
-    // Replace local scripts with cloud scripts
     localStorage.setItem("teleprompter_scripts", JSON.stringify(cloudList));
 
     console.log("Loaded cloud scripts:", cloudList);
 
-    // Refresh UI
     renderScripts(cloudList);
 
   } catch (err) {
@@ -207,42 +220,34 @@ async function loadCloudScriptsIntoLocal() {
   }
 }
 
+// =================== AUTH PANEL ===============================
 
-// ------------------- AUTH PANEL ----------------------------- 
-
-// Open login panel
+// open login panel
 document.getElementById("authOpen").onclick = () => {
   document.getElementById("authPanel").setAttribute("aria-hidden", "false");
 };
 
-// Close login panel
+// close login panel
 document.getElementById("authClose").onclick = () => {
   document.getElementById("authPanel").setAttribute("aria-hidden", "true");
 };
 
-// Google Login (ONLY active button)
+// Google Login
 document.getElementById("btnGoogle").onclick = async () => {
   await signInGoogle();
 };
 
-// Guest login is DISABLED, so remove its click
-if (document.getElementById("btnGuest")) {
-  document.getElementById("btnGuest").disabled = true;
-  document.getElementById("btnGuest").style.opacity = "0.4";
-}
+// Disable all others
+["btnGuest", "btnPhone", "btnEmail"].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.disabled = true;
+    el.style.opacity = "0.4";
+    el.style.cursor = "not-allowed";
+  }
+});
 
-// Phone + Email buttons disabled also:
-if (document.getElementById("btnPhone")) {
-  document.getElementById("btnPhone").disabled = true;
-  document.getElementById("btnPhone").style.opacity = "0.4";
-}
-
-if (document.getElementById("btnEmail")) {
-  document.getElementById("btnEmail").disabled = true;
-  document.getElementById("btnEmail").style.opacity = "0.4";
-}
-
-// Logout button (added in UI)
+// Logout
 document.getElementById("logoutBtn").onclick = async () => {
   await signOutUser();
   alert("Logged out!");
