@@ -73,3 +73,30 @@ More about me: https://umarakbar.com
 ├── service-worker.js   # Offline caching for PWA
 ├── assets/             # Icons, images, fonts
 └── README.md           # Project documentation
+
+---
+
+## 📦 Installation as PWA
+Open the tool at: https://tools.umarakbar.com
+Click “Install App” (browser prompt)
+The teleprompter will run as a standalone app on desktop/mobile.
+
+---
+
+## 🤝 Contributing
+Contributions, improvements, and suggestions are welcome.
+Feel free to open a pull request.
+
+---
+
+## 📜 License
+This project is open source under the MIT License.
+
+---
+
+## ✨ Author
+**Umar Bin Akbar Ali**
+🌐 Portfolio: https://umarakbar.com
+🔗 LinkedIn: https://linkedin.com/in/umarbinakbarali
+🐙 GitHub: https://github.com/UmarBinAkbarAli
+🎯 Live Tools: https://tools.umarakbar.com
