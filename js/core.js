@@ -1,3 +1,15 @@
+import { 
+  initAuth,
+  onAuthReady,
+  signInGoogle,
+  signInGuest,
+  getCurrentUser,
+  signOutUser
+} from './auth.js';
+
+
+import * as cloud from './cloud.js';
+
 import {setupGestures} from './gestures.js';
 import {setupScripts} from './scripts.js';
 import {ensureFullscreenToggle} from './fullscreen.js';
@@ -18,7 +30,41 @@ let scrollY = 0;
 let scrollSpeed = parseFloat(speedControl.value);
 let scrollTimer = null;
 let hideTimeout = null;
-controls.classList.remove('hidden'); // ensure visible on load
+
+controls.classList.remove('hidden');
+
+// ------------------- AUTH INIT ---------------------
+initAuth();
+
+onAuthReady(async (user) => {
+  console.log("AUTH STATE CHANGED:", user);
+
+  const status = document.getElementById("authStatus");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  if (user) {
+    // Show signed-in state
+    status.innerHTML = "Signed in as: " + (user.email || "Google User");
+
+    // Auto-close login modal
+    document.getElementById("authPanel").setAttribute("aria-hidden", "true");
+
+    // Enable logout button
+    logoutBtn.style.display = "inline-block";
+
+    // Load cloud scripts
+    await loadCloudScriptsIntoLocal();
+  } 
+  else {
+    status.innerHTML = "Not signed in";
+
+    // Hide logout button
+    logoutBtn.style.display = "none";
+  }
+});
+
+
+// -----------------------------------------------------
 
 function applyTransform(){
   const mirror = mirrorToggle && mirrorToggle.checked ? 'scaleX(-1)' : 'scaleX(1)';
@@ -56,7 +102,6 @@ function startScroll(){
   ensureFullscreenToggle(true);
 
   clearInterval(scrollTimer);
-  // start the interval for smooth scrolling
   scrollTimer = setInterval(()=> {
     scrollY -= scrollSpeed;
     applyTransform();
@@ -66,7 +111,7 @@ function startScroll(){
       else pauseScroll();
     }
   }, 30);
-  // hide controls shortly after starting playback for immersion
+
   showControlsTemporarily(false, 1500);
 }
 
@@ -88,14 +133,12 @@ function enableEdit(){
   editButton.style.display = 'none';
 }
 
-// Controls visibility (auto-hide)
 function showControlsTemporarily(visible=true, duration=3000){
   if(visible){
     controls.classList.remove('hidden');
     if(hideTimeout){ clearTimeout(hideTimeout); hideTimeout = null; }
     return;
   }
-  // schedule hide after duration
   if(hideTimeout) clearTimeout(hideTimeout);
   hideTimeout = setTimeout(()=>{
     controls.classList.add('hidden');
@@ -103,7 +146,6 @@ function showControlsTemporarily(visible=true, duration=3000){
   }, duration);
 }
 
-// show on tap
 displayText.addEventListener('click', ()=> {
   controls.classList.remove('hidden');
   if(isPlaying){
@@ -112,35 +154,96 @@ displayText.addEventListener('click', ()=> {
   }
 });
 
-// event listeners
 playPauseBtn.addEventListener('click', togglePlay);
 editButton.addEventListener('click', enableEdit);
 speedControl.addEventListener('input', ()=> { scrollSpeed = parseFloat(speedControl.value); });
 fontSizeControl.addEventListener('input', ()=> { textContent.style.fontSize = fontSizeControl.value + 'px'; });
 mirrorToggle && mirrorToggle.addEventListener('change', applyTransform);
+
 scriptInput.addEventListener('input', ()=> {
   const sample = scriptInput.value.slice(0,10);
   document.body.dir = /[\u0600-\u06FF]/.test(sample) ? 'rtl' : 'ltr';
-  // auto-save handled by scripts module
 });
 
-// keyboard (desktop)
+// RESPONSIVE
 document.addEventListener('keydown', e => {
   if(e.code === 'Space'){ e.preventDefault(); togglePlay(); }
 });
 
-// responsive: recalc font on resize/orientation
 window.addEventListener('resize', ()=> {
   if(displayText.style.display !== 'none') autoFitFont();
 });
 
-// init modules
+// INIT MODULES
 setupGestures({onTap:()=>{ togglePlay(); }, onSwipeUp:()=>{ speedControl.value = Math.min(10, +speedControl.value + 0.5); scrollSpeed = +speedControl.value; }, onSwipeDown:()=>{ speedControl.value = Math.max(1, +speedControl.value - 0.5); scrollSpeed = +speedControl.value; }, onPinchChange:(delta)=>{ let s = parseInt(getComputedStyle(textContent).fontSize); s = Math.max(12, Math.min(120, Math.round(s * delta))); textContent.style.fontSize = s + 'px'; fontSizeControl.value = s; }});
 
 setupScripts({ scriptInput, fileInput: document.getElementById('fileInput'), scriptsBtn: document.getElementById('scriptsBtn'), scriptsModal: document.getElementById('scriptsModal'), scriptsList: document.getElementById('scriptsList'), newScriptForm: document.getElementById('newScriptForm'), newTitle: document.getElementById('newTitle'), newText: document.getElementById('newText'), importBtn: document.getElementById('importBtn'), exportBtn: document.getElementById('exportBtn'), onLoadScript: (text)=>{ scriptInput.value = text; localStorage.setItem('teleprompter_script', text); }});
 
 ensureFullscreenToggle(false);
 
-// load saved script (auto)
+// Load saved script
 const saved = localStorage.getItem('teleprompter_script');
 if(saved) scriptInput.value = saved;
+
+// ------------------- CLOUD SYNC HELPER ---------------------
+async function loadCloudScriptsIntoLocal() {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  try {
+    // Load from cloud only
+    const cloudList = await cloud.loadCloudScripts(user);
+
+    // Replace local scripts with cloud scripts
+    localStorage.setItem("teleprompter_scripts", JSON.stringify(cloudList));
+
+    console.log("Loaded cloud scripts:", cloudList);
+
+    // Refresh UI
+    renderScripts(cloudList);
+
+  } catch (err) {
+    console.error("Cloud load error:", err);
+  }
+}
+
+
+// ------------------- AUTH PANEL ----------------------------- 
+
+// Open login panel
+document.getElementById("authOpen").onclick = () => {
+  document.getElementById("authPanel").setAttribute("aria-hidden", "false");
+};
+
+// Close login panel
+document.getElementById("authClose").onclick = () => {
+  document.getElementById("authPanel").setAttribute("aria-hidden", "true");
+};
+
+// Google Login (ONLY active button)
+document.getElementById("btnGoogle").onclick = async () => {
+  await signInGoogle();
+};
+
+// Guest login is DISABLED, so remove its click
+if (document.getElementById("btnGuest")) {
+  document.getElementById("btnGuest").disabled = true;
+  document.getElementById("btnGuest").style.opacity = "0.4";
+}
+
+// Phone + Email buttons disabled also:
+if (document.getElementById("btnPhone")) {
+  document.getElementById("btnPhone").disabled = true;
+  document.getElementById("btnPhone").style.opacity = "0.4";
+}
+
+if (document.getElementById("btnEmail")) {
+  document.getElementById("btnEmail").disabled = true;
+  document.getElementById("btnEmail").style.opacity = "0.4";
+}
+
+// Logout button (added in UI)
+document.getElementById("logoutBtn").onclick = async () => {
+  await signOutUser();
+  alert("Logged out!");
+};

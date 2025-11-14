@@ -57,3 +57,50 @@ textarea#scriptInput{
   .controls button{font-size:0.9rem}
   #textContent{padding:10px}
 }
+
+/* AUTH PANEL UI */
+.auth-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.auth-panel[aria-hidden="false"] {
+  display: flex;
+}
+
+.auth-card {
+  background: #111;
+  padding: 20px;
+  border-radius: 12px;
+  width: min(420px, 90%);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.auth-buttons button {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+
+.auth-close {
+  margin-top: 12px;
+  background: none;
+  color: rgba(255,255,255,0.5);
+  border: 0;
+  cursor: pointer;
+}

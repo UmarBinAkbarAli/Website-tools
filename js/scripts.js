@@ -1,3 +1,6 @@
+import { getCurrentUser } from './auth.js';
+import * as cloud from './cloud.js';
+
 export function setupScripts(opts){
   const { scriptInput, fileInput, scriptsBtn, scriptsModal, scriptsList, newScriptForm, newTitle, newText, importBtn, exportBtn, onLoadScript } = opts;
 
@@ -13,15 +16,29 @@ export function setupScripts(opts){
   scriptsBtn.addEventListener('click', ()=> { scriptsModal.setAttribute('aria-hidden','false'); renderList(); });
   document.getElementById('closeScripts').addEventListener('click', ()=> scriptsModal.setAttribute('aria-hidden','true'));
 
-  newScriptForm.addEventListener('submit', e => {
-    e.preventDefault();
-    const title = newTitle.value.trim() || 'Untitled';
-    const text = newText.value || '';
-    const list = readList();
-    list.unshift({ id: Date.now(), title, text });
-    writeList(list);
-    newTitle.value = ''; newText.value = '';
-  });
+  newScriptForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const title = newTitle.value.trim() || 'Untitled';
+  const text = newText.value || '';
+
+  const list = readList();
+  const newId = Date.now();
+  const item = { id: newId, title, text };
+
+  // save locally
+  list.unshift(item);
+  writeList(list);
+  newTitle.value = ''; 
+  newText.value = '';
+
+  // 🔥 save to cloud (if user logged in)
+  const user = getCurrentUser();
+  if (user) {
+    await cloud.saveCloudScript(user, item);
+    console.log("Cloud saved:", item);
+  }
+});
+
 
   document.getElementById('clearScript').addEventListener('click', ()=> {
     if(confirm('Clear current script?')){ scriptInput.value=''; saveCurrentScript(); }
@@ -38,9 +55,25 @@ export function setupScripts(opts){
         scriptInput.value = item.text; saveCurrentScript(); scriptsModal.setAttribute('aria-hidden','true');
         onLoadScript && onLoadScript(item.text);
       });
-      const del = document.createElement('button'); del.textContent='Delete'; del.addEventListener('click', ()=> {
-        if(confirm('Delete "'+item.title+'"?')){ const newList = readList().filter(i=>i.id!==item.id); writeList(newList); }
-      });
+      
+      const del = document.createElement('button'); 
+del.textContent='Delete'; 
+del.addEventListener('click', async ()=> {
+  if (confirm('Delete "' + item.title + '"?')) {
+
+    // delete local
+    const newList = readList().filter(i => i.id !== item.id);
+    writeList(newList);
+
+    // delete from cloud
+    const user = getCurrentUser();
+    if (user) {
+      await cloud.deleteCloudScript(user, item.id);
+      console.log("Cloud deleted:", item.id);
+    }
+  }
+});
+
       actions.appendChild(load); actions.appendChild(del);
       li.appendChild(actions);
       scriptsList.appendChild(li);
@@ -68,3 +101,4 @@ export function setupScripts(opts){
 
   renderList();
 }
+
