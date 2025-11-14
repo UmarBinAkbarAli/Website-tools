@@ -45,20 +45,23 @@ More about me: https://umarakbar.com
 
 ---
 
-## 🛠️ Tech Stack
+### 🔧 Updated Tech Stack
 
-**Frontend:**  
-- HTML5, CSS3, JavaScript  
-- Responsive layout using CSS Flex/Grid  
-- Vanilla JS for teleprompter controls
+**Frontend:**
+- HTML5, CSS3
+- Vanilla JavaScript (custom UI logic, teleprompter engine, gesture handling)
+- Responsive layout (custom CSS)
 
-**Backend:**  
-- No server-side backend required (fully client-side)
+**Backend / Services:**
+- Firebase Authentication (Email/Password login)
 
-**Deployment & DevOps:**  
-- Git & GitHub  
-- Hosted on Namecheap  
-- Optimized for PWA installation
+**Additional Tools:**
+- Custom Gesture Scripts (touch handling, scroll physics)
+- PWA (manifest + service worker)
+
+**Version Control & Deployment:**
+- Git & GitHub
+- Hosted on Namecheap (custom domain)
 
 ---
 
@@ -73,6 +76,26 @@ More about me: https://umarakbar.com
 ├── service-worker.js   # Offline caching for PWA
 ├── assets/             # Icons, images, fonts
 └── README.md           # Project documentation
+
+---
+
+### 🔐 Firebase Authentication
+
+The project includes secure login functionality using **Firebase Authentication (Email/Password)**.
+
+**Why Firebase Auth?**
+- Simple & secure login
+- Works directly in the browser (no backend server needed)
+- Protects teleprompter settings and personalized scripts
+- Allows only authorized users to access the editor/dashboard
+
+**Firebase Features Used:**
+- `initializeApp()` → setup project
+- `getAuth()` → manage authentication state
+- `signInWithEmailAndPassword()` → login
+- `onAuthStateChanged()` → auto-redirect if user is logged in/out
+
+All Firebase logic is kept inside:
 
 ---
 
