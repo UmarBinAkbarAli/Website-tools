@@ -36,9 +36,10 @@ function mergeLists(cloudList, localList){
     if(k && !map.has(k)) map.set(k, it);
     if(!k){
       // local entry without id — assign an id and keep
-      const genId = Date.now() + Math.floor(Math.random()*1000);
+      const genId = (Date.now() + Math.floor(Math.random() * 1000)).toString();
       it.id = genId;
-      map.set(String(it.id), it);
+      map.set(genId, it);
+
     }
   });
   // order: cloud items first (by updatedAt desc if present), then remaining locals
@@ -101,6 +102,8 @@ function enqueueSave(item){
   let local = loadLocalScripts();
   // ensure item has id
   if(!item.id) item.id = Date.now().toString();
+  item.id = String(item.id);
+
   // put at front
   local = [item].concat(local.filter(i => String(i.id) !== String(item.id)));
   saveLocalScripts(local);

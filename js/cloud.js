@@ -11,7 +11,7 @@ import {
 const db = getFirestore(app);
 
 export async function saveCloudScript(user, script) {
-  const id = script.id || Date.now().toString();
+  const id = String(script.id || Date.now());
   await setDoc(doc(db, "users", user.uid, "scripts", id), {
     id,
     title: script.title,
