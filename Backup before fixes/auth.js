@@ -19,21 +19,9 @@ export function onAuthReady(cb) {
   callbacks.push(cb);
 }
 
-// export function signInGoogle() {
-//  return signInWithPopup(auth, new GoogleAuthProvider());
-// }
-
-// added this funtion on the replacement of above commented lines if anythings break wil revert this
-
 export function signInGoogle() {
-  const provider = new GoogleAuthProvider();
-  try {
-    return signInWithPopup(auth, provider);
-  } catch (e) {
-    return signInWithRedirect(auth, provider);
-  }
+  return signInWithPopup(auth, new GoogleAuthProvider());
 }
-// this ends here for nishaani
 
 export function getCurrentUser() {
   return auth.currentUser;

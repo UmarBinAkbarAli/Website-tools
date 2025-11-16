@@ -50,12 +50,10 @@ export function setupScripts(opt) {
     e.preventDefault();
 
     const entry = {
-  id: Date.now().toString(),
-  title: opt.newTitle.value.trim() || "Untitled",
-  text: opt.newText.value,
-  updatedAt: Date.now()
-};
-
+      id: Date.now(),
+      title: opt.newTitle.value.trim() || "Untitled",
+      text: opt.newText.value
+    };
 
     scripts.unshift(entry);
     renderScripts(scripts);

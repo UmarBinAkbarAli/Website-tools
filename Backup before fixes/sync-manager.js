@@ -103,8 +103,6 @@ function enqueueSave(item){
   // ensure item has id
   if(!item.id) item.id = Date.now().toString();
   item.id = String(item.id);
-  item.updatedAt = Date.now();
-
 
   // put at front
   local = [item].concat(local.filter(i => String(i.id) !== String(item.id)));
