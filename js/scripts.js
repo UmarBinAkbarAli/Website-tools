@@ -1,10 +1,10 @@
 import SyncManager from './sync-manager.js';
-import { getCurrentUser } from './auth.js';
 
 const STORAGE_KEY = "teleprompter_scripts";
 
 let modal, listBox, inputBox;
 let scripts = [];
+let currentEditingId = null;
 
 // -----------------------------
 // RENDER LIST
@@ -27,62 +27,84 @@ export function setupScripts(opt) {
   listBox = opt.scriptsList;
   inputBox = opt.scriptInput;
 
-  // Load local first
-  try { scripts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch { scripts = []; }
+  try {
+    scripts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    scripts = [];
+  }
 
   renderScripts(scripts);
 
-  // open modal
+  // Open modal NEW mode
   opt.scriptsBtn.onclick = () => {
+    currentEditingId = null;
+    opt.saveScriptBtn.textContent = "Save";
+    opt.newTitle.value = "";
+    opt.newText.value = "";
     modal.setAttribute("aria-hidden", "false");
-    renderScripts(scripts);
   };
 
-  // close modal
-  document.getElementById("closeScripts").onclick =
-    () => modal.setAttribute("aria-hidden", "true");
+  // Close modal
+  document.getElementById("closeScripts").onclick = () => {
+    modal.setAttribute("aria-hidden", "true");
+  };
 
-  // -----------------------------
-  // SAVE NEW SCRIPT
-  // -----------------------------
-  opt.newScriptForm.onsubmit = async e => {
+  // SAVE / UPDATE
+  opt.newScriptForm.onsubmit = async (e) => {
     e.preventDefault();
 
-    const entry = {
-  id: Date.now().toString(),
-  title: opt.newTitle.value.trim() || "Untitled",
-  text: opt.newText.value,
-  updatedAt: Date.now()
-};
+    const titleVal = opt.newTitle.value.trim() || "Untitled";
+    const textVal = opt.newText.value;
 
+    if (currentEditingId) {
+      // UPDATE
+      const entry = {
+        id: currentEditingId,
+        title: titleVal,
+        text: textVal,
+        updatedAt: Date.now()
+      };
 
-    scripts.unshift(entry);
-    renderScripts(scripts);
+      scripts = scripts.map(s =>
+        String(s.id) === String(entry.id) ? entry : s
+      );
+
+      renderScripts(scripts);
+      SyncManager.saveOrQueue(entry);
+
+      currentEditingId = null;
+      opt.saveScriptBtn.textContent = "Save";
+
+    } else {
+      // NEW
+      const entry = {
+        id: Date.now().toString(),
+        title: titleVal,
+        text: textVal,
+        updatedAt: Date.now()
+      };
+
+      scripts.unshift(entry);
+      renderScripts(scripts);
+      SyncManager.saveOrQueue(entry);
+    }
 
     opt.newTitle.value = "";
     opt.newText.value = "";
+    modal.setAttribute("aria-hidden", "true");
+  };
 
-    // ALWAYS QUEUE TO CLOUD
-    SyncManager.saveOrQueue(entry);
-  };   // <---- YOU WERE MISSING THIS BRACKET !!
-
-  // -----------------------------
   // IMPORT
-  // -----------------------------
   opt.importBtn.onclick = () => opt.fileInput.click();
-
-  opt.fileInput.onchange = e => {
+  opt.fileInput.onchange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = ev => inputBox.value = ev.target.result;
+    r.onload = (ev) => (inputBox.value = ev.target.result);
     r.readAsText(f);
   };
 
-  // -----------------------------
   // EXPORT
-  // -----------------------------
   opt.exportBtn.onclick = () => {
     const blob = new Blob([inputBox.value], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -108,15 +130,32 @@ function buildItem(s) {
 
   const actions = document.createElement("div");
 
-  // LOAD BUTTON
+  // LOAD
   const loadBtn = document.createElement("button");
   loadBtn.textContent = "Load";
   loadBtn.onclick = () => {
     inputBox.value = s.text;
-    modal.setAttribute("aria-hidden","true");
+    currentEditingId = s.id;
+    modal.setAttribute("aria-hidden", "true");
   };
 
-  // DELETE BUTTON
+  // EDIT
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "Edit";
+  editBtn.onclick = () => {
+    const title = document.getElementById("newTitle");
+    const text = document.getElementById("newText");
+
+    title.value = s.title || "";
+    text.value = s.text || "";
+
+    currentEditingId = s.id;
+    document.getElementById("saveScriptBtn").textContent = "Update";
+
+    modal.setAttribute("aria-hidden", "false");
+  };
+
+  // DELETE
   const delBtn = document.createElement("button");
   delBtn.textContent = "Delete";
   delBtn.onclick = () => {
@@ -125,12 +164,12 @@ function buildItem(s) {
     scripts = scripts.filter(x => x.id !== s.id);
     renderScripts(scripts);
 
-    // DELETE FROM SYNC MANAGER
     SyncManager.deleteOrQueue(s.id);
   };
 
-  actions.append(loadBtn, delBtn);
+  actions.append(loadBtn, editBtn, delBtn);
   li.append(actions);
 
   return li;
 }
+  

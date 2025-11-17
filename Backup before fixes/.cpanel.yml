@@ -1,0 +1,4 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/umarzpgk/tools.umarakbar.com/
+    - /bin/rsync -av --exclude='.git' --exclude='node_modules' ./ $DEPLOYPATH

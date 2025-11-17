@@ -53,19 +53,16 @@ export function setupKeyboardShortcuts({
         fontSizeControl.dispatchEvent(new Event("input"));
         break;
 
-      case "s":
-        if (!e.ctrlKey) {
-          e.preventDefault();
-          scriptsBtn.click();
-        }
-        break;
+     case "s":
+  if (e.ctrlKey) {
+    e.preventDefault();
+    document.getElementById("newScriptForm").requestSubmit();
+  } else {
+    e.preventDefault();
+    scriptsBtn.click();
+  }
+  break;
 
-      case "s":
-        if (e.ctrlKey) {
-          e.preventDefault();
-          document.getElementById("newScriptForm").requestSubmit();
-        }
-        break;
 
       case "l":
         if (e.ctrlKey) {

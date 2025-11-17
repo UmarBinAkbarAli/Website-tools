@@ -1,50 +1,32 @@
-// sw.js – auto-updating service worker (no stale cache issues)
+// Final PWA-safe Service Worker
 
-const VERSION = self.crypto.randomUUID(); // unique version on each build
-const CACHE_NAME = `teleprompter-${VERSION}`;
+const CACHE = "teleprompter-v2";
 
-// Core files to cache
-const CORE_ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  '/css/style.css'
-];
-
-// On install – cache essential assets
-self.addEventListener('install', event => {
+self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS))
-  );
+  event.waitUntil(caches.open(CACHE));
 });
 
-// On activate – delete all old caches
-self.addEventListener('activate', event => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null))
-    ).then(() => self.clients.claim())
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
-// Network-first for JS/CSS/HTML
-self.addEventListener('fetch', event => {
-  const req = event.request;
-
-  // Only GET requests
-  if (req.method !== 'GET') return;
+// Network-first, cache fallback (safe, no clone bugs)
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
 
   event.respondWith(
-    fetch(req)
-      .then(res => {
-        // Update cache
-        if (res.ok) {
-          caches.open(CACHE_NAME).then(cache => cache.put(req, res.clone()));
-        }
+    fetch(event.request)
+      .then((res) => {
+        const resClone = res.clone();
+        caches.open(CACHE).then((c) => c.put(event.request, resClone));
         return res;
       })
-      .catch(() =>
-        caches.match(req).then(cached => cached || new Response('Offline', { status: 503 }))
-      )
+      .catch(() => caches.match(event.request))
   );
 });

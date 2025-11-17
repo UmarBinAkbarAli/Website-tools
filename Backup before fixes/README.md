@@ -1,0 +1,125 @@
+# 📱 Teleprompter (PSW)
+
+An AI-assisted teleprompter tool built for creators, speakers, educators, and content makers who need a smooth, distraction-free script reading experience.  
+This is my first fully developed tool created using the Vibe Coding approach — built from scratch as a Multidisciplinary Designer & Vibe Coder.
+
+🌐 Live Tool: https://tools.umarakbar.com  
+👤 Author: Umar Bin Akbar Ali  
+Portfolio: https://umarakbar.com  
+GitHub Repo: https://github.com/UmarBinAkbarAli/Website-tools  
+LinkedIn: https://linkedin.com/in/umarbinakbarali
+
+---
+
+## 🧩 About the Project
+
+**Teleprompter (PSW)** solves a very real problem:
+
+### 🔥 The Problem
+Creators and presenters often face:
+- Difficulty maintaining eye contact with the camera while reading scripts  
+- Clumsy, non-responsive teleprompter apps  
+- Tools that don’t adapt to different screen sizes  
+- Lack of smooth scrolling for mobile (especially in portrait mode)  
+- No clean UI for quick script editing and playback
+
+### ✅ The Solution
+Teleprompter (PSW) offers:
+- Smooth, customizable auto-scrolling  
+- Fully responsive layout across all devices (mobile, tablet, desktop)  
+- Adjustable speed, font size, playback, and formatting tools  
+- Minimal UI for distraction-free usage  
+- Works as a PWA — installable like a native app  
+- Clean & stable performance optimized with Vibe Coding techniques  
+
+---
+
+## 🎯 About Me
+
+I’m **Umar Bin Akbar Ali** —  
+A **Multidisciplinary Designer** and **Vibe Coder** blending design thinking with engineering logic to create tools with clarity, simplicity, and aesthetics.
+
+This teleprompter is my first complete product built using my own "Vibe Coding" methodology.
+
+More about me: https://umarakbar.com
+
+---
+
+### 🔧 Updated Tech Stack
+
+**Frontend:**
+- HTML5, CSS3
+- Vanilla JavaScript (custom UI logic, teleprompter engine, gesture handling)
+- Responsive layout (custom CSS)
+
+**Backend / Services:**
+- Firebase Authentication (Email/Password login)
+
+**Additional Tools:**
+- Custom Gesture Scripts (touch handling, scroll physics)
+- PWA (manifest + service worker)
+
+**Version Control & Deployment:**
+- Git & GitHub
+- Hosted on Namecheap (custom domain)
+
+---
+
+## 📂 Project Structure
+
+```bash
+/
+├── index.html          # Main teleprompter interface
+├── style.css           # Styling for layout, controls, responsiveness
+├── script.js           # Core teleprompter logic (scroll, play, pause, settings)
+├── manifest.json       # PWA configuration
+├── service-worker.js   # Offline caching for PWA
+├── assets/             # Icons, images, fonts
+└── README.md           # Project documentation
+
+---
+
+### 🔐 Firebase Authentication
+
+The project includes secure login functionality using **Firebase Authentication (Email/Password)**.
+
+**Why Firebase Auth?**
+- Simple & secure login
+- Works directly in the browser (no backend server needed)
+- Protects teleprompter settings and personalized scripts
+- Allows only authorized users to access the editor/dashboard
+
+**Firebase Features Used:**
+- `initializeApp()` → setup project
+- `getAuth()` → manage authentication state
+- `signInWithEmailAndPassword()` → login
+- `onAuthStateChanged()` → auto-redirect if user is logged in/out
+
+All Firebase logic is kept inside:
+
+---
+
+## 📦 Installation as PWA
+Open the tool at: https://tools.umarakbar.com
+Click “Install App” (browser prompt)
+The teleprompter will run as a standalone app on desktop/mobile.
+
+---
+
+## 🤝 Contributing
+Contributions, improvements, and suggestions are welcome.
+Feel free to open a pull request.
+
+---
+
+## 📜 License
+This project is open source under the MIT License.
+
+---
+
+## ✨ Author
+**Umar Bin Akbar Ali**
+🌐 Portfolio: https://umarakbar.com
+🔗 LinkedIn: https://linkedin.com/in/umarbinakbarali
+🐙 GitHub: https://github.com/UmarBinAkbarAli
+🎯 Live Tools: https://tools.umarakbar.com

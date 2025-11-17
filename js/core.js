@@ -30,6 +30,10 @@ let playing = false;
 let scrollY = 0;
 let tick = null;
 
+// new states
+let mirrored = false;
+let repeatMode = false;
+
 // =============================
 // AUTH
 // =============================
@@ -69,18 +73,46 @@ function startScroll() {
   const text = scriptBox.value.trim();
   if (!text) return;
 
-  textBox.textContent = text;
+  // if first time showing display (was hidden), set content and reset scroll
+  const startingFresh = displayBox.style.display === "none" || displayBox.getAttribute('data-init') !== 'true';
+
+  if (startingFresh) {
+    textBox.textContent = text;
+    // reset transform origin and position
+    textBox.style.transform = '';
+    scrollY = 0;
+    displayBox.setAttribute('data-init', 'true');
+  }
+
   displayBox.style.display = "block";
   scriptBox.style.display = "none";
   editBtn.style.display = "inline-block";
 
-  scrollY = 0;
   playing = true;
 
   clearInterval(tick);
   tick = setInterval(() => {
+    // update scroll position
     scrollY -= parseFloat(speedControl.value);
-    textBox.style.transform = `translateY(${scrollY}px)`;
+    // compute transform string: mirror or normal
+    if (mirrored) {
+  textBox.style.transform = `translateY(${scrollY}px) scaleX(-1)`;
+} else {
+  textBox.style.transform = `translateY(${scrollY}px)`;
+}
+
+    // detect end of text and apply repeat if enabled
+    const contentHeight = textBox.getBoundingClientRect().height;
+    const containerHeight = displayBox.getBoundingClientRect().height;
+    if (Math.abs(scrollY) > (contentHeight - containerHeight)) {
+      if (repeatMode) {
+        // restart from top
+        scrollY = 0;
+      } else {
+        // stop at end
+        stopScroll();
+      }
+    }
   }, 30);
 
   playBtn.textContent = "Pause";
@@ -111,6 +143,25 @@ fontSizeControl.oninput = () => {
   textBox.style.fontSize = fontSizeControl.value + "px";
 };
 
+// mirror toggle
+const mirrorToggle = document.getElementById('mirrorToggle');
+if (mirrorToggle) {
+  mirrored = mirrorToggle.checked;
+  mirrorToggle.addEventListener('change', (e) => {
+    mirrored = e.target.checked;
+    // re-apply transform to reflect mirror immediately
+    const translate = `translateY(${scrollY}px)`;
+    textBox.style.transform = mirrored ? `scaleX(-1) ${translate}` : translate;
+  });
+}
+
+// repeat toggle
+const repeatToggle = document.getElementById('autoRepeat');
+if (repeatToggle) {
+  repeatMode = repeatToggle.checked;
+  repeatToggle.addEventListener('change', (e) => { repeatMode = e.target.checked; });
+}
+
 // =============================
 // SCRIPTS MANAGER
 // =============================
@@ -122,6 +173,7 @@ setupScripts({
   newScriptForm: $("newScriptForm"),
   newTitle: $("newTitle"),
   newText: $("newText"),
+  saveScriptBtn: $("saveScriptBtn"),  // <-- FIXED
   importBtn: $("importBtn"),
   exportBtn: $("exportBtn"),
   fileInput: $("fileInput")
@@ -233,4 +285,40 @@ if (playElem && overlay) {
   updateOverlayDim();
   // listen to clicks and input changes that might change play state
   playElem.addEventListener('click', () => setTimeout(updateOverlayDim, 40));
+}
+
+// ESC - close any open modal or stop editing
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    // close any modal opened (aria-hidden="false")
+    document.querySelectorAll('.modal').forEach(el => {
+      // keep shortcutOverlay as it may intentionally be visible
+      if (el.id === 'shortcutOverlay') return;
+      el.setAttribute('aria-hidden', 'true');
+    });
+
+    // if editor is visible, hide it and show display (if playing) or keep hidden
+    if (scriptBox && scriptBox.style.display !== 'none') {
+      // exit edit mode: if display has content keep it hidden state unchanged
+      scriptBox.blur();
+      // do not automatically start/stop playing — just revert UI
+      displayBox.style.display = 'none';
+    }
+  }
+});
+
+// Quick Save: save current script content as update if editing a loaded script else open scripts modal
+const quickSaveBtn = document.getElementById('quickSave');
+if (quickSaveBtn) {
+  quickSaveBtn.addEventListener('click', () => {
+    // open scripts modal and pre-fill fields so user can save/update quickly via modal
+    const modal = document.getElementById('scriptsModal');
+    const title = document.getElementById('newTitle');
+    const text = document.getElementById('newText');
+    // if content exists in main editor, prefill modal with it
+    const content = scriptBox ? scriptBox.value : '';
+    title.value = document.getElementById('newTitle').value || 'Untitled';
+    text.value = content;
+    if (modal) modal.setAttribute('aria-hidden', 'false');
+  });
 }

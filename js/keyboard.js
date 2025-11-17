@@ -8,29 +8,52 @@ export function setupKeyboardShortcuts({
   scriptBox
 }) {
 
+  // Capture level to override browser save dialog
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        // Open scripts modal
+        if (scriptsBtn) scriptsBtn.click();
+      }
+    },
+    true
+  );
+
   document.addEventListener("keydown", (e) => {
 
-    // if typing, ignore shortcuts
-    if (document.activeElement === scriptBox) return;
+    // If typing in editor, block non-ctrl shortcuts
+    if (document.activeElement === scriptBox) {
+      if (!e.ctrlKey) return;
+    }
 
     switch (e.key.toLowerCase()) {
 
       case " ":
         e.preventDefault();
-        playBtn.click();
+        playBtn?.click();
         break;
 
       case "e":
         e.preventDefault();
-        editBtn.click();
+        editBtn?.click();
+        break;
+
+      case "s":
+        if (!e.ctrlKey) {
+          e.preventDefault();
+          scriptsBtn?.click();
+        }
         break;
 
       case "f":
         e.preventDefault();
         if (!document.fullscreenElement)
-          document.documentElement.requestFullscreen().catch(()=>{});
+          document.documentElement.requestFullscreen().catch(() => {});
         else
-          document.exitFullscreen().catch(()=>{});
+          document.exitFullscreen().catch(() => {});
         break;
 
       case "arrowup":
@@ -53,28 +76,17 @@ export function setupKeyboardShortcuts({
         fontSizeControl.dispatchEvent(new Event("input"));
         break;
 
-     case "s":
-  if (e.ctrlKey) {
-    e.preventDefault();
-    document.getElementById("newScriptForm").requestSubmit();
-  } else {
-    e.preventDefault();
-    scriptsBtn.click();
-  }
-  break;
-
-
       case "l":
         if (e.ctrlKey) {
           e.preventDefault();
-          syncBtn.click();
+          syncBtn?.click();
         }
         break;
 
       case "q":
         if (e.ctrlKey) {
           e.preventDefault();
-          document.getElementById("logoutBtn").click();
+          document.getElementById("logoutBtn")?.click();
         }
         break;
     }
