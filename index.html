@@ -35,8 +35,19 @@
     <div class="auth-buttons">
   <button id="btnGoogle">Continue with Google</button>
   <button id="btnPhone" disabled style="opacity:0.4; cursor:not-allowed;">Phone (Coming Soon)</button>
-  <button id="btnEmail" disabled style="opacity:0.4; cursor:not-allowed;">Email / Password (Coming Soon)</button>
+  <button id="btnEmail">Email / Password</button>
   <button id="btnGuest" disabled style="opacity:0.4; cursor:not-allowed;">Guest Login (Disabled)</button>
+</div>
+
+    <!-- EMAIL LOGIN UI (Hidden until user clicks Email button) -->
+<div id="emailPanel" style="display:none; margin-top:15px;">
+  <input id="emailInput" type="email" placeholder="Email" class="auth-input">
+  <input id="passwordInput" type="password" placeholder="Password" class="auth-input">
+
+  <div style="margin-top:10px;">
+    <button id="btnEmailLogin">Login</button>
+    <button id="btnEmailRegister">Register</button>
+  </div>
 </div>
 
 

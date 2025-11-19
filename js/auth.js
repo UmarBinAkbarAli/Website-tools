@@ -36,6 +36,23 @@ export function signInGoogle() {
 }
 // this ends here for nishaani
 
+// =============================
+// EMAIL/PASSWORD AUTH HELPERS
+// =============================
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+export function registerWithEmail(email, password) {
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export function signInWithEmail(email, password) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+
 export function getCurrentUser() {
   return auth.currentUser;
 }

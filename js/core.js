@@ -1,7 +1,9 @@
 import {
-  initAuth,
+ initAuth,
   onAuthReady,
   signInGoogle,
+  signInWithEmail,
+  registerWithEmail,
   getCurrentUser,
   signOutUser
 } from "./auth.js";
@@ -35,12 +37,29 @@ let mirrored = false;
 let repeatMode = false;
 
 // =============================
+// FIRST TIME LOGIN CHECK
+// =============================
+function handleFirstLogin(user) {
+  if (!user) return;
+  const isFirst = user.metadata.creationTime === user.metadata.lastSignInTime;
+
+  if (isFirst) {
+    // Example: Show onboarding / popup / default settings
+    console.log("FIRST LOGIN DETECTED");
+    $("welcomeModal")?.setAttribute("aria-hidden", "false");
+  }
+}
+
+// =============================
 // AUTH
 // =============================
 initAuth();
 
 onAuthReady(async user => {
   if (user) {
+
+    // detect first-time login
+    handleFirstLogin(user);
     $("authStatus").textContent = `Signed in: ${user.email || "User"}`;
     $("authPanel").setAttribute("aria-hidden", "true");
     $("logoutBtn").style.display = "inline-block";
@@ -59,6 +78,43 @@ onAuthReady(async user => {
 syncBtn.onclick = () => $("authPanel").setAttribute("aria-hidden","false");
 $("authClose").onclick = () => $("authPanel").setAttribute("aria-hidden","true");
 $("btnGoogle").onclick = () => signInGoogle();
+
+// Enable Email panel
+$("btnEmail").onclick = () => {
+  const panel = $("emailPanel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+};
+
+// =============================
+// EMAIL + PASSWORD LOGIN
+// =============================
+$("btnEmailLogin")?.addEventListener("click", async () => {
+  const email = $("emailInput")?.value.trim();
+  const pass = $("passwordInput")?.value.trim();
+  if (!email || !pass) return alert("Enter email + password");
+
+  try {
+    const cred = await signInWithEmail(email, pass);
+    handleFirstLogin(cred.user);
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+$("btnEmailRegister")?.addEventListener("click", async () => {
+  const email = $("emailInput")?.value.trim();
+  const pass = $("passwordInput")?.value.trim();
+  if (!email || !pass) return alert("Enter email + password");
+
+  try {
+    const cred = await registerWithEmail(email, pass);
+    await cred.user.sendEmailVerification();
+    handleFirstLogin(cred.user);
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 
 $("logoutBtn").onclick = async () => {
   await signOutUser();
