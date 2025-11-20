@@ -4,12 +4,19 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
-  onAuthStateChanged
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
+// Initialize Firebase Auth instance
 const auth = getAuth(app);
 let callbacks = [];
 
+// =============================
+// INIT AUTH
+// =============================
 export function initAuth() {
   onAuthStateChanged(auth, user => {
     callbacks.forEach(cb => cb(user));
@@ -20,12 +27,9 @@ export function onAuthReady(cb) {
   callbacks.push(cb);
 }
 
-// export function signInGoogle() {
-//  return signInWithPopup(auth, new GoogleAuthProvider());
-// }
-
-// added this funtion on the replacement of above commented lines if anythings break wil revert this
-
+// =============================
+// GOOGLE LOGIN
+// =============================
 export function signInGoogle() {
   const provider = new GoogleAuthProvider();
   try {
@@ -34,16 +38,10 @@ export function signInGoogle() {
     return signInWithRedirect(auth, provider);
   }
 }
-// this ends here for nishaani
 
 // =============================
-// EMAIL/PASSWORD AUTH HELPERS
+// EMAIL / PASSWORD AUTH HELPERS
 // =============================
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
 export function registerWithEmail(email, password) {
   return createUserWithEmailAndPassword(auth, email, password);
 }
@@ -52,7 +50,13 @@ export function signInWithEmail(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
+export function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email);
+}
 
+// =============================
+// OTHER HELPERS
+// =============================
 export function getCurrentUser() {
   return auth.currentUser;
 }

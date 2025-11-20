@@ -21,7 +21,15 @@ textarea#scriptInput{
 
 /* display */
 #displayText{display:none;width:min(980px,92%);height:65vh;overflow:hidden;position:relative}
-#textContent{position:absolute;width:100%;left:0;top:0;transform-origin:top left;line-height:1.75;padding:8px}
+#textContent{
+  position:absolute;
+  width:100%;
+  left:0;
+  top:0;
+  transform-origin:center top; /* <-- changed */
+  line-height:1.75;
+  padding:8px
+}
 
 /* controls (responsive glass) */
 .controls{

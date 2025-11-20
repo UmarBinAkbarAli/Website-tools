@@ -24,10 +24,17 @@ export function setupKeyboardShortcuts({
 
   document.addEventListener("keydown", (e) => {
 
-    // If typing in editor, block non-ctrl shortcuts
-    if (document.activeElement === scriptBox) {
+    // ========== BLOCK SHORTCUTS WHEN TYPING IN ANY INPUT/TEXTAREA ==========
+    const el = document.activeElement;
+    if (
+      el &&
+      (el.tagName === "INPUT" ||
+       el.tagName === "TEXTAREA" ||
+       el.isContentEditable)
+    ) {
       if (!e.ctrlKey) return;
     }
+
 
     switch (e.key.toLowerCase()) {
 

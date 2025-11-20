@@ -204,11 +204,11 @@ const mirrorToggle = document.getElementById('mirrorToggle');
 if (mirrorToggle) {
   mirrored = mirrorToggle.checked;
   mirrorToggle.addEventListener('change', (e) => {
-    mirrored = e.target.checked;
-    // re-apply transform to reflect mirror immediately
-    const translate = `translateY(${scrollY}px)`;
-    textBox.style.transform = mirrored ? `scaleX(-1) ${translate}` : translate;
-  });
+  mirrored = e.target.checked;
+  // re-apply transform to reflect mirror immediately
+  const translate = `translateY(${scrollY}px)`;
+  textBox.style.transform = mirrored ? `${translate} scaleX(-1)` : translate;
+});
 }
 
 // repeat toggle

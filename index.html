@@ -32,24 +32,36 @@
   <div class="auth-card">
     <h3>Sign in to Sync Scripts</h3>
 
+    <!-- Modern Error UI -->
+    <div id="authError" class="auth-error" style="display:none;">
+      <!-- Filled dynamically -->
+    </div>
+
+    <!-- Modern Loading UI -->
+    <div id="authLoading" class="auth-loading" style="display:none;">
+      🔄 Processing...
+    </div>
+
     <div class="auth-buttons">
-  <button id="btnGoogle">Continue with Google</button>
-  <button id="btnPhone" disabled style="opacity:0.4; cursor:not-allowed;">Phone (Coming Soon)</button>
-  <button id="btnEmail">Email / Password</button>
-  <button id="btnGuest" disabled style="opacity:0.4; cursor:not-allowed;">Guest Login (Disabled)</button>
-</div>
+      <button id="btnGoogle">Continue with Google</button>
+      <button id="btnPhone" disabled style="opacity:0.4; cursor:not-allowed;">Phone (Coming Soon)</button>
+      <button id="btnEmail">Email / Password</button>
+      <button id="btnGuest" disabled style="opacity:0.4; cursor:not-allowed;">Guest Login (Disabled)</button>
+    </div>
 
     <!-- EMAIL LOGIN UI (Hidden until user clicks Email button) -->
-<div id="emailPanel" style="display:none; margin-top:15px;">
-  <input id="emailInput" type="email" placeholder="Email" class="auth-input">
-  <input id="passwordInput" type="password" placeholder="Password" class="auth-input">
+    <div id="emailPanel" style="display:none; margin-top:15px;">
+      <input id="emailInput" type="email" placeholder="Email" class="auth-input">
+      <input id="passwordInput" type="password" placeholder="Password" class="auth-input">
 
-  <div style="margin-top:10px;">
-    <button id="btnEmailLogin">Login</button>
-    <button id="btnEmailRegister">Register</button>
-  </div>
-</div>
+      <div style="margin-top:10px;">
+        <button id="btnEmailLogin">Login</button>
+        <button id="btnEmailRegister">Register</button>
+      </div>
 
+      <!-- Forgot Password Link -->
+      <button id="forgotPass" class="forgot-link" style="margin-top:10px;">Forgot Password?</button>
+    </div>
 
     <div id="authStatus" class="auth-status"></div>
 
@@ -64,7 +76,7 @@
       <div id="textContent"></div>
     </div>
 
-        <div class="controls" id="controls" role="region" aria-label="controls">
+    <div class="controls" id="controls" role="region" aria-label="controls">
       <button id="playPause" type="button">Play</button>
       <label>Speed <input type="range" id="speedControl" min="1" max="10" step="0.5" value="3"></label>
       <label>Size <input type="range" id="fontSizeControl" min="14" max="80" step="1" value="32"></label>
@@ -78,7 +90,6 @@
       <button id="authOpen">Sync</button>
       <button id="logoutBtn" style="display:none;">Logout</button>
     </div>
-
 
     <!-- Script Manager Modal -->
     <div class="modal" id="scriptsModal" aria-hidden="true">
