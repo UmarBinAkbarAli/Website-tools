@@ -7,7 +7,8 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendEmailVerification        // <-- ADD THIS
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 // Initialize Firebase Auth instance
@@ -57,6 +58,11 @@ export function resetPassword(email) {
 // =============================
 // OTHER HELPERS
 // =============================
+
+export function verifyEmail(user) {
+  return sendEmailVerification(user);
+}
+
 export function getCurrentUser() {
   return auth.currentUser;
 }

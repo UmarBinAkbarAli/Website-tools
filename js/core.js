@@ -4,6 +4,8 @@ import {
   signInGoogle,
   signInWithEmail,
   registerWithEmail,
+  resetPassword,          // <-- added
+  verifyEmail,          // <-- ADDED
   getCurrentUser,
   signOutUser
 } from "./auth.js";
@@ -18,6 +20,32 @@ import { setupKeyboardShortcuts } from './keyboard.js';
 
 
 const $ = id => document.getElementById(id);
+
+// =============================
+// UI HELPERS
+// =============================
+function showError(msg) {
+  const box = $("authError");
+  if (box) {
+    box.innerHTML = `🚫 ${msg}`;
+    box.style.display = "block";
+  }
+}
+
+function clearError() {
+  const box = $("authError");
+  if (box) box.style.display = "none";
+}
+
+function showLoading() {
+  const box = $("authLoading");
+  if (box) box.style.display = "block";
+}
+
+function hideLoading() {
+  const box = $("authLoading");
+  if (box) box.style.display = "none";
+}
 
 const playBtn = $("playPause");
 const editBtn = $("editButton");
@@ -58,6 +86,15 @@ initAuth();
 onAuthReady(async user => {
   if (user) {
 
+        // block unverified
+    if (!user.emailVerified) {
+      $("authStatus").textContent = "Email not verified";
+      $("authPanel").setAttribute("aria-hidden", "false");
+      $("logoutBtn").style.display = "inline-block";
+      showError("Please verify your email before using cloud sync.");
+      return;
+    }
+
     // detect first-time login
     handleFirstLogin(user);
     $("authStatus").textContent = `Signed in: ${user.email || "User"}`;
@@ -89,32 +126,77 @@ $("btnEmail").onclick = () => {
 // EMAIL + PASSWORD LOGIN
 // =============================
 $("btnEmailLogin")?.addEventListener("click", async () => {
+  clearError();
+  showLoading();
+
   const email = $("emailInput")?.value.trim();
   const pass = $("passwordInput")?.value.trim();
-  if (!email || !pass) return alert("Enter email + password");
+
+  if (!email || !pass) {
+    hideLoading();
+    return showError("Enter email + password");
+  }
 
   try {
     const cred = await signInWithEmail(email, pass);
+
+    if (!cred.user.emailVerified) {
+      hideLoading();
+      return showError("Please verify your email first.");
+    }
+
     handleFirstLogin(cred.user);
   } catch (err) {
-    alert(err.message);
+    showError(err.message);
   }
+
+  hideLoading();
 });
 
 $("btnEmailRegister")?.addEventListener("click", async () => {
+  clearError();
+  showLoading();
+
   const email = $("emailInput")?.value.trim();
   const pass = $("passwordInput")?.value.trim();
-  if (!email || !pass) return alert("Enter email + password");
+
+  if (!email || !pass) {
+    hideLoading();
+    return showError("Enter email + password");
+  }
 
   try {
     const cred = await registerWithEmail(email, pass);
-    await cred.user.sendEmailVerification();
-    handleFirstLogin(cred.user);
+await verifyEmail(cred.user);
+
+    hideLoading();
+    return showError("Verification email sent. Please verify before logging in.");
   } catch (err) {
-    alert(err.message);
+    hideLoading();
+    showError(err.message);
   }
 });
 
+$("forgotPass")?.addEventListener("click", async () => {
+  clearError();
+  showLoading();
+
+  const email = $("emailInput")?.value.trim();
+
+  if (!email) {
+    hideLoading();
+    return showError("Enter your email first.");
+  }
+
+  try {
+    await resetPassword(email);
+    hideLoading();
+    showError("Password reset email sent.");
+  } catch (err) {
+    hideLoading();
+    showError(err.message);
+  }
+});
 
 $("logoutBtn").onclick = async () => {
   await signOutUser();
