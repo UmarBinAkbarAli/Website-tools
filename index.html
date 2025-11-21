@@ -71,7 +71,7 @@
     <button id="authClose" class="auth-close">Close</button>
   </div>
 </div>
-
+<div id="countdown" class="countdown-overlay" style="display:none;">3</div>
   <main class="app">
     <div id="toolbar" class="toolbar">
   <button onclick="document.execCommand('bold',false,null)" title="Bold"><b>B</b></button>
@@ -94,6 +94,7 @@
       <label>Size <input type="range" id="fontSizeControl" min="14" max="80" step="1" value="32"></label>
       <label><input type="checkbox" id="mirrorToggle"> Mirror</label>
       <label><input type="checkbox" id="autoRepeat"> Repeat</label>
+      <div id="timeLeft" class="time-display">00:00</div>
       <button id="scriptsBtn" type="button">Scripts</button>
       <button id="importBtn" type="button">Import</button>
       <button id="exportBtn" type="button">Export</button>

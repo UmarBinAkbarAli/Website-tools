@@ -56,9 +56,15 @@ const textBox = $("textContent");
 const speedControl = $("speedControl");
 const fontSizeControl = $("fontSizeControl");
 const syncBtn = $("authOpen");
+const toolbar = $("toolbar");        // New: formatting toolbar
+const countdownEl = $("countdown");  // New: 3-2-1 overlay
+const timeDisplay = $("timeLeft");   // New: time remaining display
+const mirrorToggle = $("mirrorToggle"); 
+const repeatToggle = $("autoRepeat");
 
 let attemptedLogin = false;
 let playing = false;
+let countdownActive = false; // Prevent double clicks during countdown
 let scrollY = 0;
 let tick = null;
 
@@ -274,19 +280,70 @@ $("logoutBtn").onclick = async () => {
   location.reload();
 };
 
+// Update time remaining counter visual
+function updateTimeRemaining() {
+  if (!timeDisplay) return;
+  
+  const totalHeight = textBox.getBoundingClientRect().height;
+  const viewHeight = displayBox.clientHeight;
+  const currentPos = Math.abs(scrollY);
+  const remainingPx = Math.max(0, totalHeight - viewHeight - currentPos);
+
+  const speedVal = parseFloat(speedControl.value);
+  if (speedVal <= 0 || remainingPx <= 0) {
+    timeDisplay.textContent = "00:00";
+    return;
+  }
+
+  // Approx pixels per second (Interval 30ms)
+  const pxPerSec = speedVal * 33.33;
+  const secondsLeft = Math.ceil(remainingPx / pxPerSec);
+
+  const m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+  const s = (secondsLeft % 60).toString().padStart(2, '0');
+  timeDisplay.textContent = `${m}:${s}`;
+}
+
+function applyTransform() {
+  const transform = `translateY(${scrollY}px)`;
+  textBox.style.transform = mirrored ? `${transform} scaleX(-1)` : transform;
+}
+
+function runCountdownAndStart() {
+  if (countdownActive) return;
+  countdownActive = true;
+  
+  let count = 3;
+  if (countdownEl) {
+    countdownEl.style.display = "flex";
+    countdownEl.textContent = count;
+  }
+
+  const timer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      if (countdownEl) countdownEl.textContent = count;
+    } else {
+      clearInterval(timer);
+      if (countdownEl) countdownEl.style.display = "none";
+      countdownActive = false;
+      startScroll();
+    }
+  }, 1000);
+}
+
 // =============================
 // TELEPROMPTER ENGINE
 // =============================
 function startScroll() {
-  const text = scriptBox.innerHTML; // Updated to innerHTML
+  // CHANGED: Use innerHTML for Rich Text
+  const text = scriptBox.innerHTML; 
   if (!text) return;
 
-  // if first time showing display (was hidden), set content and reset scroll
   const startingFresh = displayBox.style.display === "none" || displayBox.getAttribute('data-init') !== 'true';
 
   if (startingFresh) {
-    textBox.innerHTML = text; // Updated to innerHTML
-    // reset transform origin and position
+    textBox.innerHTML = text; // CHANGED: innerHTML
     textBox.style.transform = '';
     scrollY = 0;
     displayBox.setAttribute('data-init', 'true');
@@ -294,36 +351,29 @@ function startScroll() {
 
   displayBox.style.display = "block";
   scriptBox.style.display = "none";
+  if (toolbar) toolbar.style.display = "none"; // NEW: Hide toolbar on play
   editBtn.style.display = "inline-block";
 
   playing = true;
+  playBtn.textContent = "Pause";
 
   clearInterval(tick);
   tick = setInterval(() => {
-    // update scroll position
     scrollY -= parseFloat(speedControl.value);
-    // compute transform string: mirror or normal
-    if (mirrored) {
-  textBox.style.transform = `translateY(${scrollY}px) scaleX(-1)`;
-} else {
-  textBox.style.transform = `translateY(${scrollY}px)`;
-}
+    applyTransform(); // Use helper
+    updateTimeRemaining(); // Update timer
 
-    // detect end of text and apply repeat if enabled
+    // Check bounds
     const contentHeight = textBox.getBoundingClientRect().height;
     const containerHeight = displayBox.getBoundingClientRect().height;
     if (Math.abs(scrollY) > (contentHeight - containerHeight)) {
       if (repeatMode) {
-        // restart from top
         scrollY = 0;
       } else {
-        // stop at end
         stopScroll();
       }
     }
   }, 30);
-
-  playBtn.textContent = "Pause";
 }
 
 function stopScroll() {
@@ -332,43 +382,83 @@ function stopScroll() {
   playBtn.textContent = "Play";
 }
 
-playBtn.onclick = () => (playing ? stopScroll() : startScroll());
+playBtn.onclick = () => {
+  if (playing) {
+    stopScroll();
+  } else {
+    // Only use countdown if we are near the top
+    if (Math.abs(scrollY) < 5) {
+      runCountdownAndStart();
+    } else {
+      startScroll();
+    }
+  }
+};
 
 editBtn.onclick = () => {
   stopScroll();
   displayBox.style.display = "none";
   scriptBox.style.display = "block";
+  if (toolbar) toolbar.style.display = "flex"; // NEW: Show toolbar
   editBtn.style.display = "none";
 };
 
-// Speed fix
-speedControl.oninput = () => {
-  // no need to do anything, interval reads value live
-};
+// =============================
+// SETTINGS PERSISTENCE
+// =============================
+const PREF_PREFIX = "tele_pref_";
 
-// Font size fix
-fontSizeControl.oninput = () => {
-  textBox.style.fontSize = fontSizeControl.value + "px";
-};
+function saveSetting(key, val) {
+  localStorage.setItem(PREF_PREFIX + key, val);
+}
 
-// mirror toggle
-const mirrorToggle = document.getElementById('mirrorToggle');
-if (mirrorToggle) {
-  mirrored = mirrorToggle.checked;
-  mirrorToggle.addEventListener('change', (e) => {
-  mirrored = e.target.checked;
-  // re-apply transform to reflect mirror immediately
-  const translate = `translateY(${scrollY}px)`;
-  textBox.style.transform = mirrored ? `${translate} scaleX(-1)` : translate;
+function loadSettings() {
+  const sSpeed = localStorage.getItem(PREF_PREFIX + "speed");
+  const sSize = localStorage.getItem(PREF_PREFIX + "size");
+  const sMirror = localStorage.getItem(PREF_PREFIX + "mirror");
+  const sRepeat = localStorage.getItem(PREF_PREFIX + "repeat");
+
+  if (sSpeed) speedControl.value = sSpeed;
+  if (sSize) {
+    fontSizeControl.value = sSize;
+    textBox.style.fontSize = sSize + "px";
+  }
+  if (sMirror === "true") {
+    mirrorToggle.checked = true;
+    mirrored = true;
+    applyTransform(); // Apply mirror immediately on load
+  }
+  if (sRepeat === "true") {
+    repeatToggle.checked = true;
+    repeatMode = true;
+  }
+}
+
+// Attach Listeners
+speedControl.addEventListener("input", (e) => saveSetting("speed", e.target.value));
+
+fontSizeControl.addEventListener("input", (e) => {
+  textBox.style.fontSize = e.target.value + "px";
+  saveSetting("size", e.target.value);
 });
+
+if (mirrorToggle) {
+  mirrorToggle.addEventListener("change", (e) => {
+    mirrored = e.target.checked;
+    saveSetting("mirror", mirrored);
+    applyTransform();
+  });
 }
 
-// repeat toggle
-const repeatToggle = document.getElementById('autoRepeat');
 if (repeatToggle) {
-  repeatMode = repeatToggle.checked;
-  repeatToggle.addEventListener('change', (e) => { repeatMode = e.target.checked; });
+  repeatToggle.addEventListener("change", (e) => {
+    repeatMode = e.target.checked;
+    saveSetting("repeat", repeatMode);
+  });
 }
+
+// Load settings immediately on startup
+loadSettings();
 
 // =============================
 // SCRIPTS MANAGER
@@ -530,3 +620,4 @@ if (quickSaveBtn) {
     if (modal) modal.setAttribute('aria-hidden', 'false');
   });
 }
+  
