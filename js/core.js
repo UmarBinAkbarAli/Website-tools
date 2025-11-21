@@ -283,50 +283,63 @@ $("logoutBtn").onclick = async () => {
 
 // the Voice Setup Function
 function initSpeech() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+  // 1. Browser Support Check
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    return alert("Voice control requires Google Chrome.");
+  }
+
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = 'en-US';
 
+  // 2. Error Handling (To verify mic issues)
+  recognition.onerror = (event) => {
+    console.error("Voice Error:", event.error);
+    if (event.error === 'not-allowed') {
+      alert("Microphone blocked. Click the lock icon in the address bar to allow.");
+      voiceMode = false;
+      if(voiceToggle) voiceToggle.checked = false;
+    }
+  };
+
   recognition.onresult = (event) => {
     if (!voiceMode || !playing) return;
-    
+
     const results = event.results;
     const transcript = results[results.length - 1][0].transcript.toLowerCase().trim();
     const words = transcript.split(" ");
-    
-    // Remove punctuation to make matching easier
+
+    // Clean text for better matching
     const cleanScript = textBox.innerText.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
     
     let matchIndex = -1;
 
-    // SMARTER MATCHING: Try 3 words, then 2, then 1
+    // 3. Smart Matching (3 words -> 2 words -> 1 word)
     for (let i = 3; i >= 1; i--) {
       if (words.length < i) continue;
-      // Get last 'i' words and strip punctuation
       const phrase = words.slice(-i).join(" ").replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
       const idx = cleanScript.indexOf(phrase);
-      
       if (idx !== -1) {
         matchIndex = idx;
-        break; // Found a match!
+        break; 
       }
     }
 
     if (matchIndex !== -1) {
-      // Calculate percentage based on the CLEAN text length
+      // 4. FIXED MATH (Removes the Dead Zone)
       const percent = matchIndex / cleanScript.length;
-      
       const totalH = textBox.getBoundingClientRect().height;
       const viewH = displayBox.clientHeight;
       
-      // Target position: keep text in the top third
-      const targetY = -(percent * totalH) + (viewH / 3); 
-      
-      // Only scroll FORWARD smoothly
-      if (targetY < scrollY) { 
+      // Simple direct mapping: 0% = top, 100% = bottom
+      const maxScroll = totalH - viewH;
+      const targetY = -(percent * maxScroll);
+
+      // Add a 50px buffer so it accepts small forward jumps
+      if (targetY < scrollY + 50) { 
+         // Smooth movement
          scrollY = scrollY * 0.9 + targetY * 0.1;
          applyTransform();
       }
@@ -334,9 +347,13 @@ function initSpeech() {
   };
   
   recognition.onend = () => {
-    if (playing && voiceMode) recognition.start();
-  }
+    // Auto-restart if silence stops it
+    if (playing && voiceMode) {
+      try { recognition.start(); } catch(e) {}
+    }
+  };
 }
+
 // Run immediately
 initSpeech();
 

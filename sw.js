@@ -16,8 +16,10 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Network-first, cache fallback (safe, no clone bugs)
+// Network-first, cache fallback (Safe & Clean)
 self.addEventListener("fetch", (event) => {
+  // FIX: Ignore chrome-extension://, file://, or other non-http schemes
+  if (!event.request.url.startsWith('http')) return;
   if (event.request.method !== "GET") return;
 
   event.respondWith(
