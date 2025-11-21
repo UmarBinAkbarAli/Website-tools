@@ -25,7 +25,7 @@ export function renderScripts(arr) {
 export function setupScripts(opt) {
   modal = opt.scriptsModal;
   listBox = opt.scriptsList;
-  inputBox = opt.scriptInput;
+  inputBox = opt.scriptInput; // This is now a DIV, not textarea
 
   try {
     scripts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -40,7 +40,7 @@ export function setupScripts(opt) {
     currentEditingId = null;
     opt.saveScriptBtn.textContent = "Save";
     opt.newTitle.value = "";
-    opt.newText.innerHTML = "";
+    opt.newText.innerHTML = ""; // FIXED: innerHTML
     modal.setAttribute("aria-hidden", "false");
   };
 
@@ -54,7 +54,7 @@ export function setupScripts(opt) {
     e.preventDefault();
 
     const titleVal = opt.newTitle.value.trim() || "Untitled";
-    const textVal = opt.newText.innerHTML;
+    const textVal = opt.newText.innerHTML; // FIXED: innerHTML
 
     if (currentEditingId) {
       // UPDATE
@@ -90,7 +90,7 @@ export function setupScripts(opt) {
     }
 
     opt.newTitle.value = "";
-    opt.newText.innerHTML = "";
+    opt.newText.innerHTML = ""; // FIXED: innerHTML
     modal.setAttribute("aria-hidden", "true");
   };
 
@@ -100,13 +100,15 @@ export function setupScripts(opt) {
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
+    // FIXED: innerHTML
     r.onload = (ev) => (inputBox.innerHTML = ev.target.result);
     r.readAsText(f);
   };
 
   // EXPORT
   opt.exportBtn.onclick = () => {
-    const blob = new Blob([inputBox.value], { type: "text/plain" });
+    // FIXED: innerText for plain text export, or innerHTML if you want HTML
+    const blob = new Blob([inputBox.innerText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -121,10 +123,15 @@ export function setupScripts(opt) {
 function buildItem(s) {
   const li = document.createElement("li");
 
+  // Strip HTML for the preview snippet
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = s.text || "";
+  const plainText = tempDiv.innerText.slice(0, 100);
+
   li.innerHTML = `
     <div>
       <strong>${s.title}</strong>
-      <div class="muted">${(s.text || "").slice(0, 100)}</div>
+      <div class="muted">${plainText}...</div>
     </div>
   `;
 
@@ -134,7 +141,7 @@ function buildItem(s) {
   const loadBtn = document.createElement("button");
   loadBtn.textContent = "Load";
   loadBtn.onclick = () => {
-    inputBox.innerHTML = s.text;
+    inputBox.innerHTML = s.text; // FIXED: innerHTML
     currentEditingId = s.id;
     modal.setAttribute("aria-hidden", "true");
   };
@@ -147,7 +154,7 @@ function buildItem(s) {
     const text = document.getElementById("newText");
 
     title.value = s.title || "";
-    text.innerHTML = s.text || "";
+    text.innerHTML = s.text || ""; // FIXED: innerHTML
 
     currentEditingId = s.id;
     document.getElementById("saveScriptBtn").textContent = "Update";
@@ -172,4 +179,3 @@ function buildItem(s) {
 
   return li;
 }
-  

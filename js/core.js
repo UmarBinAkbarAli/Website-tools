@@ -61,14 +61,15 @@ const countdownEl = $("countdown");  // New: 3-2-1 overlay
 const timeDisplay = $("timeLeft");   // New: time remaining display
 const mirrorToggle = $("mirrorToggle"); 
 const repeatToggle = $("autoRepeat");
+const voiceToggle = $("voiceModeToggle");
 
+let voiceMode = false;
+let recognition = null;
 let attemptedLogin = false;
 let playing = false;
 let countdownActive = false; // Prevent double clicks during countdown
 let scrollY = 0;
 let tick = null;
-
-// new states
 let mirrored = false;
 let repeatMode = false;
 
@@ -280,9 +281,76 @@ $("logoutBtn").onclick = async () => {
   location.reload();
 };
 
+// the Voice Setup Function
+function initSpeech() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    if (!voiceMode || !playing) return;
+    
+    const results = event.results;
+    const transcript = results[results.length - 1][0].transcript.toLowerCase().trim();
+    const words = transcript.split(" ");
+    
+    // Remove punctuation to make matching easier
+    const cleanScript = textBox.innerText.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+    
+    let matchIndex = -1;
+
+    // SMARTER MATCHING: Try 3 words, then 2, then 1
+    for (let i = 3; i >= 1; i--) {
+      if (words.length < i) continue;
+      // Get last 'i' words and strip punctuation
+      const phrase = words.slice(-i).join(" ").replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+      const idx = cleanScript.indexOf(phrase);
+      
+      if (idx !== -1) {
+        matchIndex = idx;
+        break; // Found a match!
+      }
+    }
+
+    if (matchIndex !== -1) {
+      // Calculate percentage based on the CLEAN text length
+      const percent = matchIndex / cleanScript.length;
+      
+      const totalH = textBox.getBoundingClientRect().height;
+      const viewH = displayBox.clientHeight;
+      
+      // Target position: keep text in the top third
+      const targetY = -(percent * totalH) + (viewH / 3); 
+      
+      // Only scroll FORWARD smoothly
+      if (targetY < scrollY) { 
+         scrollY = scrollY * 0.9 + targetY * 0.1;
+         applyTransform();
+      }
+    }
+  };
+  
+  recognition.onend = () => {
+    if (playing && voiceMode) recognition.start();
+  }
+}
+// Run immediately
+initSpeech();
+
 // Update time remaining counter visual
 function updateTimeRemaining() {
   if (!timeDisplay) return;
+
+  if (voiceMode) {
+    timeDisplay.textContent = "🎤 LISTENING";
+    timeDisplay.style.color = "#0f0";
+    return;
+  } else {
+    timeDisplay.style.color = "#00e5ff";
+  }
   
   const totalHeight = textBox.getBoundingClientRect().height;
   const viewHeight = displayBox.clientHeight;
@@ -295,7 +363,6 @@ function updateTimeRemaining() {
     return;
   }
 
-  // Approx pixels per second (Interval 30ms)
   const pxPerSec = speedVal * 33.33;
   const secondsLeft = Math.ceil(remainingPx / pxPerSec);
 
@@ -303,7 +370,6 @@ function updateTimeRemaining() {
   const s = (secondsLeft % 60).toString().padStart(2, '0');
   timeDisplay.textContent = `${m}:${s}`;
 }
-
 function applyTransform() {
   const transform = `translateY(${scrollY}px)`;
   textBox.style.transform = mirrored ? `${transform} scaleX(-1)` : transform;
@@ -336,7 +402,7 @@ function runCountdownAndStart() {
 // TELEPROMPTER ENGINE
 // =============================
 function startScroll() {
-  // CHANGED: Use innerHTML for Rich Text
+  // CHANGED: Use innerHTML so colors/bold work
   const text = scriptBox.innerHTML; 
   if (!text) return;
 
@@ -351,35 +417,41 @@ function startScroll() {
 
   displayBox.style.display = "block";
   scriptBox.style.display = "none";
-  if (toolbar) toolbar.style.display = "none"; // NEW: Hide toolbar on play
+  if (toolbar) toolbar.style.display = "none";
   editBtn.style.display = "inline-block";
 
   playing = true;
   playBtn.textContent = "Pause";
 
-  clearInterval(tick);
-  tick = setInterval(() => {
-    scrollY -= parseFloat(speedControl.value);
-    applyTransform(); // Use helper
-    updateTimeRemaining(); // Update timer
+  // VOICE MODE LOGIC
+  if (voiceMode && recognition) {
+    try { recognition.start(); } catch(e){}
+    clearInterval(tick);
+    // We still run a tick to update timer visual, but NOT scrollY
+    tick = setInterval(() => updateTimeRemaining(), 100);
+  } else {
+    // NORMAL MODE LOGIC
+    clearInterval(tick);
+    tick = setInterval(() => {
+      scrollY -= parseFloat(speedControl.value);
+      applyTransform();
+      updateTimeRemaining();
 
-    // Check bounds
-    const contentHeight = textBox.getBoundingClientRect().height;
-    const containerHeight = displayBox.getBoundingClientRect().height;
-    if (Math.abs(scrollY) > (contentHeight - containerHeight)) {
-      if (repeatMode) {
-        scrollY = 0;
-      } else {
-        stopScroll();
+      const contentHeight = textBox.getBoundingClientRect().height;
+      const containerHeight = displayBox.getBoundingClientRect().height;
+      if (Math.abs(scrollY) > (contentHeight - containerHeight)) {
+        if (repeatMode) scrollY = 0;
+        else stopScroll();
       }
-    }
-  }, 30);
+    }, 30);
+  }
 }
 
 function stopScroll() {
   playing = false;
   clearInterval(tick);
   playBtn.textContent = "Play";
+  if (recognition) recognition.stop();
 }
 
 playBtn.onclick = () => {
@@ -447,6 +519,15 @@ if (mirrorToggle) {
     mirrored = e.target.checked;
     saveSetting("mirror", mirrored);
     applyTransform();
+  });
+}
+
+//VoiceToggle Logic is
+if (voiceToggle) {
+  voiceToggle.addEventListener("change", (e) => {
+    voiceMode = e.target.checked;
+    // Optional: Dim speed control to show it's disabled
+    speedControl.parentElement.style.opacity = voiceMode ? "0.5" : "1";
   });
 }
 
@@ -620,4 +701,15 @@ if (quickSaveBtn) {
     if (modal) modal.setAttribute('aria-hidden', 'false');
   });
 }
-  
+  // CLEAN PASTE HANDLER: Forces white text when pasting
+const modalEditor = document.getElementById('newText');
+[scriptBox, modalEditor].forEach(el => {
+  if(!el) return;
+  el.addEventListener("paste", (e) => {
+    e.preventDefault();
+    // Get plain text only (strips colors/fonts)
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    // Insert it cleanly
+    document.execCommand("insertText", false, text);
+  });
+});
