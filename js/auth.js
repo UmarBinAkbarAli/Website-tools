@@ -63,6 +63,10 @@ export function verifyEmail(user) {
   return sendEmailVerification(user);
 }
 
+export function resendVerification(user) {
+  return sendEmailVerification(user);
+}
+
 export function getCurrentUser() {
   return auth.currentUser;
 }

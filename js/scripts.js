@@ -40,7 +40,7 @@ export function setupScripts(opt) {
     currentEditingId = null;
     opt.saveScriptBtn.textContent = "Save";
     opt.newTitle.value = "";
-    opt.newText.value = "";
+    opt.newText.innerHTML = "";
     modal.setAttribute("aria-hidden", "false");
   };
 
@@ -54,7 +54,7 @@ export function setupScripts(opt) {
     e.preventDefault();
 
     const titleVal = opt.newTitle.value.trim() || "Untitled";
-    const textVal = opt.newText.value;
+    const textVal = opt.newText.innerHTML;
 
     if (currentEditingId) {
       // UPDATE
@@ -90,7 +90,7 @@ export function setupScripts(opt) {
     }
 
     opt.newTitle.value = "";
-    opt.newText.value = "";
+    opt.newText.innerHTML = "";
     modal.setAttribute("aria-hidden", "true");
   };
 
@@ -100,7 +100,7 @@ export function setupScripts(opt) {
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = (ev) => (inputBox.value = ev.target.result);
+    r.onload = (ev) => (inputBox.innerHTML = ev.target.result);
     r.readAsText(f);
   };
 
@@ -134,7 +134,7 @@ function buildItem(s) {
   const loadBtn = document.createElement("button");
   loadBtn.textContent = "Load";
   loadBtn.onclick = () => {
-    inputBox.value = s.text;
+    inputBox.innerHTML = s.text;
     currentEditingId = s.id;
     modal.setAttribute("aria-hidden", "true");
   };
@@ -147,7 +147,7 @@ function buildItem(s) {
     const text = document.getElementById("newText");
 
     title.value = s.title || "";
-    text.value = s.text || "";
+    text.innerHTML = s.text || "";
 
     currentEditingId = s.id;
     document.getElementById("saveScriptBtn").textContent = "Update";

@@ -162,3 +162,65 @@ textarea#scriptInput{
 
 /* hide overlay slightly when playing to avoid distraction */
 .shortcut-overlay.dim { opacity:0.28; transform: translateY(-4px); }
+
+/* === RICH TEXT EDITOR STYLES === */
+
+/* Toolbar Container */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.08);
+  padding: 8px 12px;
+  border-radius: 8px;
+  width: min(980px, 92%);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Toolbar Buttons */
+.toolbar button {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.toolbar button:hover { background: rgba(255,255,255,0.15); }
+
+/* Main Editor (Replaces Textarea styles) */
+.editor {
+  width: min(980px,92%); 
+  height: 40vh; 
+  background: rgba(255,255,255,0.04);
+  color: var(--muted); 
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px; 
+  overflow-y: auto;
+  outline: none;
+  white-space: pre-wrap; /* Important for keeping line breaks */
+}
+
+/* Modal Editor Specifics */
+.modal-editor {
+  height: 150px;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.03);
+  width: 100%;
+}
+
+/* Placeholder Logic for Divs */
+.editor:empty:before {
+  content: attr(placeholder);
+  color: rgba(255,255,255,0.3);
+  pointer-events: none;
+  display: block;
+}

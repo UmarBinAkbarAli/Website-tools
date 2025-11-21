@@ -33,9 +33,12 @@
     <h3>Sign in to Sync Scripts</h3>
 
     <!-- Modern Error UI -->
-    <div id="authError" class="auth-error" style="display:none;">
-      <!-- Filled dynamically -->
-    </div>
+    <div id="authError" class="auth-error" style="display:none;"></div>
+      <button id="resendVerify"
+      class="forgot-link"
+      style="display:none; margin-top:6px;">
+  Resend Verification Email
+</button>
 
     <!-- Modern Loading UI -->
     <div id="authLoading" class="auth-loading" style="display:none;">
@@ -70,11 +73,20 @@
 </div>
 
   <main class="app">
-    <textarea id="scriptInput" placeholder="Paste or write your script here..."></textarea>
+    <div id="toolbar" class="toolbar">
+  <button onclick="document.execCommand('bold',false,null)" title="Bold"><b>B</b></button>
+  <button onclick="document.execCommand('italic',false,null)" title="Italic"><i>I</i></button>
+  <button onclick="document.execCommand('underline',false,null)" title="Underline"><u>U</u></button>
+  <button onclick="document.execCommand('foreColor',false,'#ffff00')" style="color:yellow" title="Highlight">A</button>
+  <button onclick="document.execCommand('foreColor',false,'#ff4444')" style="color:#ff4444" title="Red">A</button>
+  <button onclick="document.execCommand('removeFormat',false,null)" title="Clear Formatting">✕</button>
+</div>
 
-    <div id="displayText" aria-hidden="true">
-      <div id="textContent"></div>
-    </div>
+<div id="scriptInput" class="editor" contenteditable="true" placeholder="Paste or write your script here..."></div>
+
+<div id="displayText" aria-hidden="true">
+  <div id="textContent"></div>
+</div>
 
     <div class="controls" id="controls" role="region" aria-label="controls">
       <button id="playPause" type="button">Play</button>
@@ -101,7 +113,7 @@
         <section class="modal-body">
           <form id="newScriptForm">
             <input id="newTitle" placeholder="New script title" required />
-            <textarea id="newText" placeholder="Script text"></textarea>
+           <div id="newText" class="editor modal-editor" contenteditable="true" placeholder="Script text"></div>
             <div class="row">
               <button id="saveScriptBtn" type="submit">Save</button>
               <button type="button" id="clearScript">Clear current</button>

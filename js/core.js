@@ -6,6 +6,7 @@ import {
   registerWithEmail,
   resetPassword,          // <-- added
   verifyEmail,          // <-- ADDED
+  resendVerification,   // <-- ADD THIS
   getCurrentUser,
   signOutUser
 } from "./auth.js";
@@ -56,6 +57,7 @@ const speedControl = $("speedControl");
 const fontSizeControl = $("fontSizeControl");
 const syncBtn = $("authOpen");
 
+let attemptedLogin = false;
 let playing = false;
 let scrollY = 0;
 let tick = null;
@@ -86,19 +88,35 @@ initAuth();
 onAuthReady(async user => {
   if (user) {
 
-        // block unverified
-    if (!user.emailVerified) {
-      $("authStatus").textContent = "Email not verified";
-      $("authPanel").setAttribute("aria-hidden", "false");
-      $("logoutBtn").style.display = "inline-block";
-      showError("Please verify your email before using cloud sync.");
-      return;
+if (!user.emailVerified) {
+
+    // ONLY show modal if user tried to login
+    if (attemptedLogin) {
+        $("authStatus").textContent = "Email not verified";
+        $("authPanel").setAttribute("aria-hidden","false");
+
+        showError("Please verify your email before using cloud sync.");
+
+        const rv = $("resendVerify");
+        rv.style.display = "block";
+        rv.onclick = async () => {
+            rv.style.display = "none";
+            showError("Sending verification email...");
+            await resendVerification(user);
+            showError("Verification email sent again.");
+        };
     }
+
+    return; // always stop here
+}
+
 
     // detect first-time login
     handleFirstLogin(user);
     $("authStatus").textContent = `Signed in: ${user.email || "User"}`;
     $("authPanel").setAttribute("aria-hidden", "true");
+    
+    // show logout button ONLY NOW
     $("logoutBtn").style.display = "inline-block";
 
     // Load scripts from cloud
@@ -111,8 +129,39 @@ onAuthReady(async user => {
   }
 });
 
+// =============================
+// AUTO-CHECK EMAIL VERIFICATION
+// =============================
+setInterval(async () => {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  await user.reload();
+
+  if (user.emailVerified) {
+    // hide error + resend button
+    $("authError").style.display = "none";
+    $("resendVerify").style.display = "none";
+
+    // close panel
+    $("authPanel").setAttribute("aria-hidden", "true");
+
+    // update UI
+    $("authStatus").textContent = `Signed in: ${user.email}`;
+
+    // load scripts now that user is verified
+    const list = await cloud.loadCloudScripts(user);
+    renderScripts(list);
+    localStorage.setItem("teleprompter_scripts", JSON.stringify(list));
+  }
+}, 5000);
+
 // login UI
-syncBtn.onclick = () => $("authPanel").setAttribute("aria-hidden","false");
+syncBtn.onclick = () => {
+    attemptedLogin = true;
+    $("authPanel").setAttribute("aria-hidden", "false");
+};
+
 $("authClose").onclick = () => $("authPanel").setAttribute("aria-hidden","true");
 $("btnGoogle").onclick = () => signInGoogle();
 
@@ -140,10 +189,31 @@ $("btnEmailLogin")?.addEventListener("click", async () => {
   try {
     const cred = await signInWithEmail(email, pass);
 
-    if (!cred.user.emailVerified) {
-      hideLoading();
-      return showError("Please verify your email first.");
-    }
+if (!cred.user.emailVerified) {
+  hideLoading();
+
+  // show error
+  showError("Please verify your email first.");
+
+  // show resend verification button
+  const rv = $("resendVerify");
+  if (rv) {
+    rv.style.display = "block";
+    rv.onclick = async () => {
+      rv.style.display = "none";
+      showError("Sending verification email...");
+      try {
+        await resendVerification(cred.user);
+        showError("Verification email sent again.");
+      } catch (err) {
+        showError(err.message);
+      }
+    };
+  }
+
+  return;
+}
+
 
     handleFirstLogin(cred.user);
   } catch (err) {
@@ -208,14 +278,14 @@ $("logoutBtn").onclick = async () => {
 // TELEPROMPTER ENGINE
 // =============================
 function startScroll() {
-  const text = scriptBox.value.trim();
+  const text = scriptBox.innerHTML; // Updated to innerHTML
   if (!text) return;
 
   // if first time showing display (was hidden), set content and reset scroll
   const startingFresh = displayBox.style.display === "none" || displayBox.getAttribute('data-init') !== 'true';
 
   if (startingFresh) {
-    textBox.textContent = text;
+    textBox.innerHTML = text; // Updated to innerHTML
     // reset transform origin and position
     textBox.style.transform = '';
     scrollY = 0;
@@ -402,7 +472,7 @@ if (SH_SAVE) SH_SAVE.onclick = () => {
   if (form) form.requestSubmit();
   else {
     // fallback: store current script as a quick temp script
-    const txt = safe('scriptInput') ? safe('scriptInput').value : '';
+    const txt = safe('scriptInput') ? safe('scriptInput').innerHTML : '';
     if (txt) {
       // create a hidden quick-save form submit if you want; fallback: show modal
       safe('scriptsBtn') && safe('scriptsBtn').click();
@@ -454,9 +524,9 @@ if (quickSaveBtn) {
     const title = document.getElementById('newTitle');
     const text = document.getElementById('newText');
     // if content exists in main editor, prefill modal with it
-    const content = scriptBox ? scriptBox.value : '';
+    const content = scriptBox ? scriptBox.innerHTML : '';
     title.value = document.getElementById('newTitle').value || 'Untitled';
-    text.value = content;
+    text.innerHTML = content;
     if (modal) modal.setAttribute('aria-hidden', 'false');
   });
 }
