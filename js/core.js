@@ -1,12 +1,12 @@
 import {
- initAuth,
+  initAuth,
   onAuthReady,
   signInGoogle,
   signInWithEmail,
   registerWithEmail,
-  resetPassword,          // <-- added
-  verifyEmail,          // <-- ADDED
-  resendVerification,   // <-- ADD THIS
+  resetPassword,
+  verifyEmail,
+  resendVerification,
   getCurrentUser,
   signOutUser
 } from "./auth.js";
@@ -56,18 +56,21 @@ const textBox = $("textContent");
 const speedControl = $("speedControl");
 const fontSizeControl = $("fontSizeControl");
 const syncBtn = $("authOpen");
-const toolbar = $("toolbar");        // New: formatting toolbar
-const countdownEl = $("countdown");  // New: 3-2-1 overlay
-const timeDisplay = $("timeLeft");   // New: time remaining display
+const toolbar = $("toolbar");
+const countdownEl = $("countdown");
+const timeDisplay = $("timeLeft");
 const mirrorToggle = $("mirrorToggle"); 
 const repeatToggle = $("autoRepeat");
-const voiceToggle = $("voiceModeToggle");
 
-let voiceMode = false;
-let recognition = null;
+// NEW CONTROLS
+const widthControl = $("widthControl");
+const fontControl = $("fontControl");
+const guideToggle = $("guideToggle");
+const focusGuide = $("focusGuide");
+
 let attemptedLogin = false;
 let playing = false;
-let countdownActive = false; // Prevent double clicks during countdown
+let countdownActive = false;
 let scrollY = 0;
 let tick = null;
 let mirrored = false;
@@ -81,8 +84,6 @@ function handleFirstLogin(user) {
   const isFirst = user.metadata.creationTime === user.metadata.lastSignInTime;
 
   if (isFirst) {
-    // Example: Show onboarding / popup / default settings
-    console.log("FIRST LOGIN DETECTED");
     $("welcomeModal")?.setAttribute("aria-hidden", "false");
   }
 }
@@ -94,39 +95,30 @@ initAuth();
 
 onAuthReady(async user => {
   if (user) {
-
-if (!user.emailVerified) {
-
-    // ONLY show modal if user tried to login
-    if (attemptedLogin) {
-        $("authStatus").textContent = "Email not verified";
-        $("authPanel").setAttribute("aria-hidden","false");
-
-        showError("Please verify your email before using cloud sync.");
-
-        const rv = $("resendVerify");
-        rv.style.display = "block";
-        rv.onclick = async () => {
-            rv.style.display = "none";
-            showError("Sending verification email...");
-            await resendVerification(user);
-            showError("Verification email sent again.");
-        };
+    if (!user.emailVerified) {
+        if (attemptedLogin) {
+            $("authStatus").textContent = "Email not verified";
+            $("authPanel").setAttribute("aria-hidden","false");
+            showError("Please verify your email before using cloud sync.");
+            const rv = $("resendVerify");
+            if(rv) {
+              rv.style.display = "block";
+              rv.onclick = async () => {
+                  rv.style.display = "none";
+                  showError("Sending verification email...");
+                  await resendVerification(user);
+                  showError("Verification email sent again.");
+              };
+            }
+        }
+        return; 
     }
 
-    return; // always stop here
-}
-
-
-    // detect first-time login
     handleFirstLogin(user);
     $("authStatus").textContent = `Signed in: ${user.email || "User"}`;
     $("authPanel").setAttribute("aria-hidden", "true");
-    
-    // show logout button ONLY NOW
     $("logoutBtn").style.display = "inline-block";
 
-    // Load scripts from cloud
     const list = await cloud.loadCloudScripts(user);
     renderScripts(list);
     localStorage.setItem("teleprompter_scripts", JSON.stringify(list));
@@ -136,34 +128,23 @@ if (!user.emailVerified) {
   }
 });
 
-// =============================
-// AUTO-CHECK EMAIL VERIFICATION
-// =============================
+// Auto-check email verification
 setInterval(async () => {
   const user = getCurrentUser();
   if (!user) return;
-
   await user.reload();
-
   if (user.emailVerified) {
-    // hide error + resend button
     $("authError").style.display = "none";
-    $("resendVerify").style.display = "none";
-
-    // close panel
+    const rv = $("resendVerify");
+    if(rv) rv.style.display = "none";
     $("authPanel").setAttribute("aria-hidden", "true");
-
-    // update UI
     $("authStatus").textContent = `Signed in: ${user.email}`;
-
-    // load scripts now that user is verified
     const list = await cloud.loadCloudScripts(user);
     renderScripts(list);
     localStorage.setItem("teleprompter_scripts", JSON.stringify(list));
   }
 }, 5000);
 
-// login UI
 syncBtn.onclick = () => {
     attemptedLogin = true;
     $("authPanel").setAttribute("aria-hidden", "false");
@@ -172,7 +153,6 @@ syncBtn.onclick = () => {
 $("authClose").onclick = () => $("authPanel").setAttribute("aria-hidden","true");
 $("btnGoogle").onclick = () => signInGoogle();
 
-// Enable Email panel
 $("btnEmail").onclick = () => {
   const panel = $("emailPanel");
   panel.style.display = panel.style.display === "none" ? "block" : "none";
@@ -184,7 +164,6 @@ $("btnEmail").onclick = () => {
 $("btnEmailLogin")?.addEventListener("click", async () => {
   clearError();
   showLoading();
-
   const email = $("emailInput")?.value.trim();
   const pass = $("passwordInput")?.value.trim();
 
@@ -195,45 +174,35 @@ $("btnEmailLogin")?.addEventListener("click", async () => {
 
   try {
     const cred = await signInWithEmail(email, pass);
-
-if (!cred.user.emailVerified) {
-  hideLoading();
-
-  // show error
-  showError("Please verify your email first.");
-
-  // show resend verification button
-  const rv = $("resendVerify");
-  if (rv) {
-    rv.style.display = "block";
-    rv.onclick = async () => {
-      rv.style.display = "none";
-      showError("Sending verification email...");
-      try {
-        await resendVerification(cred.user);
-        showError("Verification email sent again.");
-      } catch (err) {
-        showError(err.message);
+    if (!cred.user.emailVerified) {
+      hideLoading();
+      showError("Please verify your email first.");
+      const rv = $("resendVerify");
+      if (rv) {
+        rv.style.display = "block";
+        rv.onclick = async () => {
+          rv.style.display = "none";
+          showError("Sending verification email...");
+          try {
+            await resendVerification(cred.user);
+            showError("Verification email sent again.");
+          } catch (err) {
+            showError(err.message);
+          }
+        };
       }
-    };
-  }
-
-  return;
-}
-
-
+      return;
+    }
     handleFirstLogin(cred.user);
   } catch (err) {
     showError(err.message);
   }
-
   hideLoading();
 });
 
 $("btnEmailRegister")?.addEventListener("click", async () => {
   clearError();
   showLoading();
-
   const email = $("emailInput")?.value.trim();
   const pass = $("passwordInput")?.value.trim();
 
@@ -244,8 +213,7 @@ $("btnEmailRegister")?.addEventListener("click", async () => {
 
   try {
     const cred = await registerWithEmail(email, pass);
-await verifyEmail(cred.user);
-
+    await verifyEmail(cred.user);
     hideLoading();
     return showError("Verification email sent. Please verify before logging in.");
   } catch (err) {
@@ -257,7 +225,6 @@ await verifyEmail(cred.user);
 $("forgotPass")?.addEventListener("click", async () => {
   clearError();
   showLoading();
-
   const email = $("emailInput")?.value.trim();
 
   if (!email) {
@@ -281,93 +248,12 @@ $("logoutBtn").onclick = async () => {
   location.reload();
 };
 
-// the Voice Setup Function
-function initSpeech() {
-  // 1. Browser Support Check
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    return alert("Voice control requires Google Chrome.");
-  }
+// =============================
+// TELEPROMPTER ENGINE
+// =============================
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-US';
-
-  // 2. Error Handling (To verify mic issues)
-  recognition.onerror = (event) => {
-    console.error("Voice Error:", event.error);
-    if (event.error === 'not-allowed') {
-      alert("Microphone blocked. Click the lock icon in the address bar to allow.");
-      voiceMode = false;
-      if(voiceToggle) voiceToggle.checked = false;
-    }
-  };
-
-  recognition.onresult = (event) => {
-    if (!voiceMode || !playing) return;
-
-    const results = event.results;
-    const transcript = results[results.length - 1][0].transcript.toLowerCase().trim();
-    const words = transcript.split(" ");
-
-    // Clean text for better matching
-    const cleanScript = textBox.innerText.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-    
-    let matchIndex = -1;
-
-    // 3. Smart Matching (3 words -> 2 words -> 1 word)
-    for (let i = 3; i >= 1; i--) {
-      if (words.length < i) continue;
-      const phrase = words.slice(-i).join(" ").replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-      const idx = cleanScript.indexOf(phrase);
-      if (idx !== -1) {
-        matchIndex = idx;
-        break; 
-      }
-    }
-
-    if (matchIndex !== -1) {
-      // 4. FIXED MATH (Removes the Dead Zone)
-      const percent = matchIndex / cleanScript.length;
-      const totalH = textBox.getBoundingClientRect().height;
-      const viewH = displayBox.clientHeight;
-      
-      // Simple direct mapping: 0% = top, 100% = bottom
-      const maxScroll = totalH - viewH;
-      const targetY = -(percent * maxScroll);
-
-      // Add a 50px buffer so it accepts small forward jumps
-      if (targetY < scrollY + 50) { 
-         // Smooth movement
-         scrollY = scrollY * 0.9 + targetY * 0.1;
-         applyTransform();
-      }
-    }
-  };
-  
-  recognition.onend = () => {
-    // Auto-restart if silence stops it
-    if (playing && voiceMode) {
-      try { recognition.start(); } catch(e) {}
-    }
-  };
-}
-
-// Run immediately
-initSpeech();
-
-// Update time remaining counter visual
 function updateTimeRemaining() {
   if (!timeDisplay) return;
-
-  if (voiceMode) {
-    timeDisplay.textContent = "🎤 LISTENING";
-    timeDisplay.style.color = "#0f0";
-    return;
-  } else {
-    timeDisplay.style.color = "#00e5ff";
-  }
   
   const totalHeight = textBox.getBoundingClientRect().height;
   const viewHeight = displayBox.clientHeight;
@@ -387,9 +273,13 @@ function updateTimeRemaining() {
   const s = (secondsLeft % 60).toString().padStart(2, '0');
   timeDisplay.textContent = `${m}:${s}`;
 }
+
 function applyTransform() {
-  const transform = `translateY(${scrollY}px)`;
-  textBox.style.transform = mirrored ? `${transform} scaleX(-1)` : transform;
+  if (mirrored) {
+    textBox.style.transform = `scaleX(-1) translateY(${scrollY}px)`;
+  } else {
+    textBox.style.transform = `translateY(${scrollY}px)`;
+  }
 }
 
 function runCountdownAndStart() {
@@ -415,18 +305,15 @@ function runCountdownAndStart() {
   }, 1000);
 }
 
-// =============================
-// TELEPROMPTER ENGINE
-// =============================
 function startScroll() {
-  // CHANGED: Use innerHTML so colors/bold work
+  // Use innerHTML because it's a contenteditable div now
   const text = scriptBox.innerHTML; 
   if (!text) return;
 
   const startingFresh = displayBox.style.display === "none" || displayBox.getAttribute('data-init') !== 'true';
 
   if (startingFresh) {
-    textBox.innerHTML = text; // CHANGED: innerHTML
+    textBox.innerHTML = text;
     textBox.style.transform = '';
     scrollY = 0;
     displayBox.setAttribute('data-init', 'true');
@@ -440,43 +327,42 @@ function startScroll() {
   playing = true;
   playBtn.textContent = "Pause";
 
-  // VOICE MODE LOGIC
-  if (voiceMode && recognition) {
-    try { recognition.start(); } catch(e){}
-    clearInterval(tick);
-    // We still run a tick to update timer visual, but NOT scrollY
-    tick = setInterval(() => updateTimeRemaining(), 100);
-  } else {
-    // NORMAL MODE LOGIC
-    clearInterval(tick);
-    tick = setInterval(() => {
-      scrollY -= parseFloat(speedControl.value);
-      applyTransform();
-      updateTimeRemaining();
+  // Show guide if enabled
+  if (guideToggle && guideToggle.checked) focusGuide.style.display = "block";
 
-      const contentHeight = textBox.getBoundingClientRect().height;
-      const containerHeight = displayBox.getBoundingClientRect().height;
-      if (Math.abs(scrollY) > (contentHeight - containerHeight)) {
-        if (repeatMode) scrollY = 0;
-        else stopScroll();
+  clearInterval(tick);
+  tick = setInterval(() => {
+    scrollY -= parseFloat(speedControl.value);
+    applyTransform();
+    updateTimeRemaining();
+
+    const contentHeight = textBox.getBoundingClientRect().height;
+    const containerHeight = displayBox.getBoundingClientRect().height;
+    if (Math.abs(scrollY) > (contentHeight - containerHeight)) {
+      if (repeatMode) {
+        scrollY = 0;
+      } else {
+        stopScroll();
       }
-    }, 30);
-  }
+    }
+  }, 30);
 }
 
 function stopScroll() {
   playing = false;
   clearInterval(tick);
   playBtn.textContent = "Play";
-  if (recognition) recognition.stop();
+  focusGuide.style.display = "none"; // Hide guide when stopped
 }
 
 playBtn.onclick = () => {
   if (playing) {
     stopScroll();
   } else {
-    // Only use countdown if we are near the top
-    if (Math.abs(scrollY) < 5) {
+    const isAtTop = Math.abs(scrollY) < 5;
+    const isFromEditMode = displayBox.style.display === "none";
+
+    if (isAtTop || isFromEditMode) {
       runCountdownAndStart();
     } else {
       startScroll();
@@ -488,8 +374,9 @@ editBtn.onclick = () => {
   stopScroll();
   displayBox.style.display = "none";
   scriptBox.style.display = "block";
-  if (toolbar) toolbar.style.display = "flex"; // NEW: Show toolbar
+  if (toolbar) toolbar.style.display = "flex";
   editBtn.style.display = "none";
+  focusGuide.style.display = "none";
 };
 
 // =============================
@@ -506,6 +393,11 @@ function loadSettings() {
   const sSize = localStorage.getItem(PREF_PREFIX + "size");
   const sMirror = localStorage.getItem(PREF_PREFIX + "mirror");
   const sRepeat = localStorage.getItem(PREF_PREFIX + "repeat");
+  
+  // New Settings
+  const sWidth = localStorage.getItem(PREF_PREFIX + "width");
+  const sFont = localStorage.getItem(PREF_PREFIX + "font");
+  const sGuide = localStorage.getItem(PREF_PREFIX + "guide");
 
   if (sSpeed) speedControl.value = sSpeed;
   if (sSize) {
@@ -515,15 +407,59 @@ function loadSettings() {
   if (sMirror === "true") {
     mirrorToggle.checked = true;
     mirrored = true;
-    applyTransform(); // Apply mirror immediately on load
   }
   if (sRepeat === "true") {
     repeatToggle.checked = true;
     repeatMode = true;
   }
+  
+  // Load Width
+  if (sWidth) {
+    widthControl.value = sWidth;
+    displayBox.style.width = `min(980px, ${sWidth}%)`;
+  }
+  
+  // Load Font
+  if (sFont) {
+    fontControl.value = sFont;
+    updateFontClass(sFont);
+  }
+  
+  // Load Guide
+  if (sGuide === "true") {
+    guideToggle.checked = true;
+  }
+
+  applyTransform();
 }
 
-// Attach Listeners
+// === Width Logic ===
+widthControl.addEventListener("input", (e) => {
+  const w = e.target.value;
+  displayBox.style.width = `min(980px, ${w}%)`;
+  saveSetting("width", w);
+});
+
+// === Font Logic ===
+function updateFontClass(val) {
+  textBox.classList.remove("font-serif", "font-mono");
+  if(val === "serif") textBox.classList.add("font-serif");
+  if(val === "mono") textBox.classList.add("font-mono");
+}
+fontControl.addEventListener("change", (e) => {
+  updateFontClass(e.target.value);
+  saveSetting("font", e.target.value);
+});
+
+// === Guide Logic ===
+guideToggle.addEventListener("change", (e) => {
+  saveSetting("guide", e.target.checked);
+  // If currently playing, update visibility immediately
+  if(playing) {
+    focusGuide.style.display = e.target.checked ? "block" : "none";
+  }
+});
+
 speedControl.addEventListener("input", (e) => saveSetting("speed", e.target.value));
 
 fontSizeControl.addEventListener("input", (e) => {
@@ -539,15 +475,6 @@ if (mirrorToggle) {
   });
 }
 
-//VoiceToggle Logic is
-if (voiceToggle) {
-  voiceToggle.addEventListener("change", (e) => {
-    voiceMode = e.target.checked;
-    // Optional: Dim speed control to show it's disabled
-    speedControl.parentElement.style.opacity = voiceMode ? "0.5" : "1";
-  });
-}
-
 if (repeatToggle) {
   repeatToggle.addEventListener("change", (e) => {
     repeatMode = e.target.checked;
@@ -555,7 +482,6 @@ if (repeatToggle) {
   });
 }
 
-// Load settings immediately on startup
 loadSettings();
 
 // =============================
@@ -569,13 +495,12 @@ setupScripts({
   newScriptForm: $("newScriptForm"),
   newTitle: $("newTitle"),
   newText: $("newText"),
-  saveScriptBtn: $("saveScriptBtn"),  // <-- FIXED
+  saveScriptBtn: $("saveScriptBtn"),
   importBtn: $("importBtn"),
   exportBtn: $("exportBtn"),
   fileInput: $("fileInput")
 });
 
-// initialize sync manager
 SyncManager.init({
   getCurrentUser,
   onAuthReady,
@@ -583,14 +508,8 @@ SyncManager.init({
   cloud
 });
 
-// =============================
-// GESTURES
-// =============================
 setupGestures({ onTap: () => playBtn.click() });
 
-// ===============================
-// Keyboard shortcuts call here
-// ===============================
 setupKeyboardShortcuts({
   playBtn,
   editBtn,
@@ -601,13 +520,12 @@ setupKeyboardShortcuts({
   scriptBox
 });
 
-// =============== Shortcut Overlay Hooks ===============
+// =============================
+// SHORTCUT OVERLAY
+// =============================
 const overlay = document.getElementById('shortcutOverlay');
-
-// helper safe getters
 const safe = id => document.getElementById(id);
 
-// button hooks
 const SH_PLAY = safe('sh_play');
 const SH_EDIT = safe('sh_edit');
 const SH_SCRIPTS = safe('sh_scripts');
@@ -620,7 +538,6 @@ const SH_SYNC = safe('sh_sync');
 const SH_SAVE = safe('sh_save');
 const SH_LOGOUT = safe('sh_logout');
 
-// actions (guarded)
 if (SH_PLAY) SH_PLAY.onclick = () => safe('playPause') && safe('playPause').click();
 if (SH_EDIT) SH_EDIT.onclick = () => safe('editButton') && safe('editButton').click();
 if (SH_SCRIPTS) SH_SCRIPTS.onclick = () => safe('scriptsBtn') && safe('scriptsBtn').click();
@@ -629,7 +546,6 @@ if (SH_FULL) SH_FULL.onclick = () => {
   else document.exitFullscreen().catch(()=>{});
 };
 
-// speed
 if (SH_SPEED_UP) SH_SPEED_UP.onclick = () => {
   const el = safe('speedControl'); if (!el) return;
   el.value = Math.min(Number(el.max || 20), Number(el.value) + 0.5);
@@ -641,7 +557,6 @@ if (SH_SPEED_DN) SH_SPEED_DN.onclick = () => {
   el.dispatchEvent(new Event('input'));
 };
 
-// font size
 if (SH_FONT_UP) SH_FONT_UP.onclick = () => {
   const el = safe('fontSizeControl'); if (!el) return;
   el.value = Math.min(Number(el.max || 200), Number(el.value) + 2);
@@ -653,80 +568,67 @@ if (SH_FONT_DN) SH_FONT_DN.onclick = () => {
   el.dispatchEvent(new Event('input'));
 };
 
-// sync / save / logout
 if (SH_SYNC) SH_SYNC.onclick = () => safe('authOpen') && safe('authOpen').click();
 if (SH_SAVE) SH_SAVE.onclick = () => {
   const form = document.getElementById('newScriptForm');
   if (form) form.requestSubmit();
   else {
-    // fallback: store current script as a quick temp script
     const txt = safe('scriptInput') ? safe('scriptInput').innerHTML : '';
     if (txt) {
-      // create a hidden quick-save form submit if you want; fallback: show modal
       safe('scriptsBtn') && safe('scriptsBtn').click();
     }
   }
 };
 if (SH_LOGOUT) SH_LOGOUT.onclick = () => safe('logoutBtn') && safe('logoutBtn').click();
 
-// dim overlay while playing: toggle .dim when play starts/stops
 const playElem = safe('playPause');
 if (playElem && overlay) {
-  // observe text content to detect playing state by button text
   function updateOverlayDim(){
     if (!overlay) return;
     const isPlaying = playElem.textContent && playElem.textContent.toLowerCase().includes('pause');
     if (isPlaying) overlay.classList.add('dim'); else overlay.classList.remove('dim');
   }
   updateOverlayDim();
-  // listen to clicks and input changes that might change play state
   playElem.addEventListener('click', () => setTimeout(updateOverlayDim, 40));
 }
 
-// ESC - close any open modal or stop editing
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    // close any modal opened (aria-hidden="false")
     document.querySelectorAll('.modal').forEach(el => {
-      // keep shortcutOverlay as it may intentionally be visible
       if (el.id === 'shortcutOverlay') return;
       el.setAttribute('aria-hidden', 'true');
     });
 
-    // if editor is visible, hide it and show display (if playing) or keep hidden
     if (scriptBox && scriptBox.style.display !== 'none') {
-      // exit edit mode: if display has content keep it hidden state unchanged
       scriptBox.blur();
-      // do not automatically start/stop playing — just revert UI
       displayBox.style.display = 'none';
+      focusGuide.style.display = 'none'; // Hide guide if escaping to edit mode
     }
   }
 });
 
-// Quick Save: save current script content as update if editing a loaded script else open scripts modal
 const quickSaveBtn = document.getElementById('quickSave');
 if (quickSaveBtn) {
   quickSaveBtn.addEventListener('click', () => {
-    // open scripts modal and pre-fill fields so user can save/update quickly via modal
     const modal = document.getElementById('scriptsModal');
     const title = document.getElementById('newTitle');
     const text = document.getElementById('newText');
-    // if content exists in main editor, prefill modal with it
     const content = scriptBox ? scriptBox.innerHTML : '';
     title.value = document.getElementById('newTitle').value || 'Untitled';
     text.innerHTML = content;
     if (modal) modal.setAttribute('aria-hidden', 'false');
   });
 }
-  // CLEAN PASTE HANDLER: Forces white text when pasting
+
+// =============================
+// CLEAN PASTE HANDLER
+// =============================
 const modalEditor = document.getElementById('newText');
 [scriptBox, modalEditor].forEach(el => {
   if(!el) return;
   el.addEventListener("paste", (e) => {
     e.preventDefault();
-    // Get plain text only (strips colors/fonts)
     const text = (e.clipboardData || window.clipboardData).getData("text");
-    // Insert it cleanly
     document.execCommand("insertText", false, text);
   });
 });

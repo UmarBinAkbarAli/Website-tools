@@ -252,3 +252,57 @@ textarea#scriptInput{
   min-width: 60px;
   text-align: center;
 }
+
+/* Important: ensure text sits on top of highlighter */
+#textContent {
+  z-index: 2;
+  position: absolute;
+  width: 100%;
+  left: 0;
+  top: 0;
+  /* Ensure stacking context for z-index to work */
+  transform-style: preserve-3d; 
+}
+
+/* === NEW FEATURES === */
+
+/* 1. Focus Guide / Eye-Line */
+.focus-guide {
+  position: fixed;
+  top: 35%; /* Sweet spot for reading is usually top-third */
+  left: 0; 
+  right: 0;
+  height: 60px;
+  pointer-events: none;
+  z-index: 100;
+  display: none; /* Hidden by default */
+  border-top: 2px solid rgba(255, 0, 0, 0.5);
+  border-bottom: 2px solid rgba(255, 0, 0, 0.5);
+  background: rgba(255, 0, 0, 0.05); /* Very faint red tint */
+}
+/* Arrows on the side of the guide */
+.focus-guide::before, .focus-guide::after {
+  content: "▶";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 0, 0, 0.8);
+  font-size: 20px;
+}
+.focus-guide::before { left: 10px; }
+.focus-guide::after { right: 10px; content: "◀"; }
+
+/* 2. Font Classes */
+.font-serif {
+  font-family: Georgia, "Times New Roman", Times, serif !important;
+}
+.font-mono {
+  font-family: "Courier New", Courier, monospace !important;
+}
+/* Default is Sans (Inter) defined in body */
+
+/* Ensure text box responds to width changes centered */
+#displayText {
+  margin: 0 auto; /* Center the box */
+  transition: width 0.2s ease;
+}
