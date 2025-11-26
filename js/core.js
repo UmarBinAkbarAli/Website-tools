@@ -897,3 +897,124 @@ function toggleTextClass(className, active) {
     else el.classList.remove(className);
   });
 }
+
+// =============================
+// VOICE RECOGNITION (NEW)
+// =============================
+import { initVoiceHighlighter } from './Speech/voice-highlighter.js';
+
+let voiceModule = null;
+
+const voiceStartBtn = $("voiceStart");
+const voiceStopBtn = $("voiceStop");
+const voiceResetBtn = $("voiceReset");
+const voiceStatus = $("voiceStatus");
+
+function initVoiceFeature() {
+  voiceModule = initVoiceHighlighter({
+    textBoxId: "textContent",
+    displayBoxId: "displayText",
+    highlighterId: "voiceHighlighter",
+    lookahead: 50,
+    minConfidence: 0.5,
+    smoothing: 0.12
+  });
+}
+
+// Enable voice buttons when play starts
+const originalStartScroll = startScroll;
+startScroll = function() {
+  originalStartScroll.call(this);
+  
+  // Build word map immediately after starting play
+  if (voiceModule) {
+    console.log("[Core] Building voice word map from startScroll");
+    voiceModule.buildWordMap();
+  }
+  
+  // ENABLE VOICE BUTTONS when playing
+  if (voiceStartBtn) voiceStartBtn.disabled = false;
+  if (voiceResetBtn) voiceResetBtn.disabled = false;
+};
+
+// Disable voice buttons when stopping
+const originalStopScroll = stopScroll;
+stopScroll = function() {
+  // STOP VOICE FIRST if active
+  if (voiceModule) voiceModule.stop();
+  
+  originalStopScroll.call(this);
+  
+  // DISABLE VOICE BUTTONS
+  if (voiceStartBtn) voiceStartBtn.disabled = true;
+  if (voiceStopBtn) voiceStopBtn.disabled = true;
+  if (voiceResetBtn) voiceResetBtn.disabled = true;
+  if (voiceStatus) voiceStatus.textContent = "🎤 Ready";
+};
+
+// Voice Start Button
+if (voiceStartBtn) {
+  voiceStartBtn.onclick = () => {
+    if (!voiceModule) initVoiceFeature();
+    
+    if (!playing) {
+      alert("Start playing first!");
+      return;
+    }
+    
+    // CRITICAL FIX: Build word map RIGHT NOW before starting recognition
+    if (voiceModule) {
+      const mapCount = voiceModule.buildWordMap();
+      if (mapCount === 0) {
+        alert("No text found! Make sure script is loaded.");
+        return;
+      }
+      console.log(`[Core] Voice word map built: ${mapCount} words`);
+    }
+    
+    const success = voiceModule.start();
+    if (success) {
+      voiceStartBtn.disabled = true;
+      voiceStopBtn.disabled = false;
+      if (voiceStatus) voiceStatus.textContent = "🎤 Listening...";
+    } else {
+      alert("Voice recognition failed. Check browser support.");
+    }
+  };
+}
+
+// Voice Stop Button
+if (voiceStopBtn) {
+  voiceStopBtn.onclick = () => {
+    if (voiceModule) voiceModule.stop();
+    voiceStartBtn.disabled = false;
+    voiceStopBtn.disabled = true;
+    if (voiceStatus) voiceStatus.textContent = "🎤 Stopped";
+  };
+}
+
+// Voice Reset Button
+if (voiceResetBtn) {
+  voiceResetBtn.onclick = () => {
+    if (voiceModule) voiceModule.reset();
+    if (voiceStatus) voiceStatus.textContent = "🎤 Reset";
+  };
+}
+
+// CRITICAL FIX: Only apply main scroll if voice is NOT recording
+const originalApplyTransform = applyTransform;
+applyTransform = function() {
+  // If voice is recording, DON'T update scroll (voice controls it)
+  if (voiceModule && voiceModule.isVoiceActive && voiceModule.isVoiceActive()) {
+    return;
+  }
+  
+  originalApplyTransform.call(this);
+};
+
+// Sync mirror state with voice module
+if (mirrorToggle) {
+  mirrorToggle.addEventListener("change", (e) => {
+    if (voiceModule) voiceModule.setMirrored(e.target.checked);
+  });
+}

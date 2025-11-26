@@ -381,3 +381,44 @@ hr.chapter-marker::after {
 #displayText {
   cursor: grab; /* Shows grab hand when paused */
 }
+
+/* === VOICE RECOGNITION STYLES === */
+
+.voice-highlight {
+  position: absolute;
+  background: rgba(0, 229, 255, 0.3);
+  border: 2px solid rgba(0, 229, 255, 0.8);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 50;
+  transition: all 0.1s ease-out;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+}
+
+.voice-highlight.recording {
+  animation: pulse-glow 0.6s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(0, 229, 255, 0.9); }
+}
+
+.voice-word {
+  display: inline-block;
+  position: relative;
+}
+
+/* Voice button states */
+#voiceStart:disabled,
+#voiceStop:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+#voiceStart:not(:disabled):hover,
+#voiceStop:not(:disabled):hover,
+#voiceReset:hover {
+  color: #00e5ff;
+  transform: scale(1.15);
+}
