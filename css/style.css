@@ -1,21 +1,29 @@
-:root{
-  --bg:#0d0d0d; --muted:rgba(255,255,255,0.85);
-  --glass: rgba(25,25,25,0.65);
+:root {
+  --bg-color: #0d0d0d;
+  --text-color: #ffffff;
+  --muted: rgba(255,255,255,0.85);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
+
 body{
-  margin:0;background:var(--bg);color:white;
+  margin:0;
+  background-color: var(--bg-color); /* Changed to var */
+  color: var(--text-color);          /* Changed to var */
   font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-  min-height:100vh; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  -webkit-font-smoothing:antialiased; 
+  -moz-osx-font-smoothing:grayscale;
+  min-height:100vh; 
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
 }
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
 
 /* editor */
 textarea#scriptInput{
-  width:min(980px,92%); height:40vh; background:rgba(255,255,255,0.04);
-  color:var(--muted); border:1px solid rgba(255,255,255,0.06);
+  width:min(980px,92%); height:40vh; 
+  background: rgba(255,255,255,0.04);
+  color: var(--text-color) !important; /* Changed to var */
+  border:1px solid rgba(255,255,255,0.06);
   border-radius:12px;padding:16px;font-size:16px; resize:vertical;
 }
 
@@ -305,4 +313,71 @@ textarea#scriptInput{
 #displayText {
   margin: 0 auto; /* Center the box */
   transition: width 0.2s ease;
+}
+
+/* Green Screen Mode */
+.chroma-mode {
+  --bg-color: #00ff00 !important;
+  --text-color: #ffffff !important;
+}
+.chroma-mode .editor {
+  background: transparent !important;
+  border: none !important;
+}
+.chroma-mode .controls, 
+.chroma-mode #focusGuide,
+.chroma-mode .toolbar {
+  opacity: 0.1; /* Dim UI so green is dominant */
+  transition: opacity 0.3s;
+}
+.chroma-mode .controls:hover {
+  opacity: 1;
+}
+
+/* Chapter Markers */
+hr.chapter-marker {
+  border: 0;
+  border-top: 2px dashed #ff4444;
+  margin: 40px 0;
+  position: relative;
+  overflow: visible;
+}
+hr.chapter-marker::after {
+  content: "CHAPTER MARKER";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff4444;
+  color: black;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+/* === NEW TEXT MODES === */
+
+/* 1. All Caps Mode */
+.text-caps {
+  text-transform: uppercase !important;
+  letter-spacing: 1px;
+}
+
+/* 2. Alignment Mode */
+.text-center {
+  text-align: center !important;
+}
+
+/* 3. Line Spacing Modes */
+.spacing-1 { line-height: 1.4 !important; } /* Normal */
+.spacing-2 { line-height: 1.8 !important; } /* Wide */
+.spacing-3 { line-height: 2.3 !important; } /* Extra Wide */
+
+/* Drag Cursor Styles */
+.is-dragging {
+  cursor: grabbing !important;
+}
+#displayText {
+  cursor: grab; /* Shows grab hand when paused */
 }

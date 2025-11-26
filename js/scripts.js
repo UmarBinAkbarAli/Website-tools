@@ -94,15 +94,90 @@ export function setupScripts(opt) {
     modal.setAttribute("aria-hidden", "true");
   };
 
-  // IMPORT
+// IMPORT
   opt.importBtn.onclick = () => opt.fileInput.click();
   opt.fileInput.onchange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    const r = new FileReader();
-    // FIXED: innerHTML
-    r.onload = (ev) => (inputBox.innerHTML = ev.target.result);
-    r.readAsText(f);
+
+    const fileName = f.name.toLowerCase();
+    const fileType = fileName.substring(fileName.lastIndexOf('.') + 1);
+    
+    // Function to set the content (used by all file types)
+    const setContent = (content) => {
+      inputBox.innerHTML = content;
+      // Set the title automatically for convenience
+      opt.newTitle.value = fileName.replace(`.${fileType}`, '').substring(0, 50) || 'Imported Script';
+      e.target.value = ''; // Reset input
+    };
+    
+    // ----------------------------------------------------------------
+    // 1. DOCX Handling (Your existing code)
+    // ----------------------------------------------------------------
+    if (fileType === 'docx') {
+      if (typeof window.mammoth === 'undefined') {
+        return alert("DOCX parser not loaded. Please ensure the app is online.");
+      }
+      const r = new FileReader();
+      r.onload = (ev) => {
+        window.mammoth.convertToHtml({ arrayBuffer: ev.target.result })
+          .then((result) => setContent(result.value))
+          .catch((err) => {
+            alert("Error parsing DOCX file: " + err.message);
+            console.error(err);
+          });
+      };
+      r.readAsArrayBuffer(f);
+
+    // ----------------------------------------------------------------
+    // 2. PDF Handling (NEW STRUCTURAL FIX)
+    // ----------------------------------------------------------------
+    } else if (fileType === 'pdf') {
+      if (typeof pdfjsLib === 'undefined') {
+        return alert("PDF parser not loaded. Please ensure the app is online.");
+      }
+      const r = new FileReader();
+      r.onload = async (ev) => {
+        try {
+          const pdfDoc = await pdfjsLib.getDocument({ data: ev.target.result }).promise;
+          let fullText = '';
+          
+          for (let i = 1; i <= pdfDoc.numPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const textContent = await page.getTextContent();
+            
+            // Extract text items and join them with spaces. 
+            // We insert a double newline after each page for better separation.
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n\n'; 
+          }
+          
+          // IMPROVEMENT: Convert raw text into structured HTML paragraphs.
+          // We split by double newline (\n\n) to correctly create paragraphs.
+          const htmlContent = fullText.split('\n\n').map(p => 
+            p.trim() ? `<p>${p.trim().replace(/\n/g, '<br>')}</p>` : ''
+          ).join('');
+          
+          setContent(htmlContent);
+
+        } catch (err) {
+          alert("Error processing PDF: " + err.message);
+          console.error(err);
+        }
+      };
+      r.readAsArrayBuffer(f);
+      
+    // ----------------------------------------------------------------
+    // 3. TXT Handling
+    // ----------------------------------------------------------------
+    } else if (fileType === 'txt') {
+      const r = new FileReader();
+      r.onload = (ev) => setContent(ev.target.result);
+      r.readAsText(f);
+      
+    } else {
+      alert("Unsupported file type: " + fileType);
+    }
   };
 
   // EXPORT

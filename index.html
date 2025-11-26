@@ -79,9 +79,13 @@
   <button onclick="document.execCommand('bold',false,null)" title="Bold"><b>B</b></button>
   <button onclick="document.execCommand('italic',false,null)" title="Italic"><i>I</i></button>
   <button onclick="document.execCommand('underline',false,null)" title="Underline"><u>U</u></button>
+  <button id="btnCaps" type="button" title="Toggle All Caps (TT)" style="font-weight:bold;">TT</button>
+  <button id="btnAlign" type="button" title="Toggle Center/Left Align">↔</button>
+  <button id="btnSpacing" type="button" title="Change Line Spacing">↕</button>
   <button onclick="document.execCommand('foreColor',false,'#ffff00')" style="color:yellow" title="Highlight">A</button>
   <button onclick="document.execCommand('foreColor',false,'#ff4444')" style="color:#ff4444" title="Red">A</button>
   <button onclick="document.execCommand('removeFormat',false,null)" title="Clear Formatting">✕</button>
+  <button onclick="document.execCommand('insertHTML', false, '<hr class=\'chapter-marker\'>')" title="Insert Chapter Marker" style="width:auto; padding:0 8px;">📍 Marker</button>
 </div>
 
 <div id="scriptInput" class="editor" contenteditable="true" placeholder="Paste or write your script here..."></div>
@@ -106,7 +110,19 @@
       <option value="mono">Mono</option>
     </select>
   </label>
+<div style="display:flex; gap:10px; align-items:center; border-left:1px solid #444; padding-left:10px; margin-left:5px;">
+    <label title="Background Color" style="font-size:12px; display:flex; flex-direction:column; align-items:center;">
+      BG <input type="color" id="bgColorPicker" value="#0d0d0d" style="width:30px; height:20px; padding:0; border:none;">
+    </label>
+    <label title="Text Color" style="font-size:12px; display:flex; flex-direction:column; align-items:center;">
+      Txt <input type="color" id="textColorPicker" value="#ffffff" style="width:30px; height:20px; padding:0; border:none;">
+    </label>
+    <button id="greenScreenBtn" type="button" title="Toggle Green Screen Mode" style="font-size:10px; padding:4px;">🟩</button>
+    <button id="prevMarkerBtn" type="button" title="Previous Marker" style="font-size:12px; padding:4px 8px;">⏮</button>
+<button id="nextMarkerBtn" type="button" title="Next Marker" style="font-size:12px; padding:4px 8px;">⏭</button>
+  </div>
 
+  <span id="wpmDisplay" style="font-family:monospace; font-size:12px; color:#aaa; margin-left:5px;">0 WPM</span>
   <label><input type="checkbox" id="mirrorToggle"> Mirror</label>
   <label><input type="checkbox" id="autoRepeat"> Repeat</label>
   
@@ -145,17 +161,17 @@
         </section>
       </div>
     </div>
-
-    <input id="fileInput" type="file" accept=".txt" style="display:none" />
-
+    <!-- File input support feature tag-->
+    <input id="fileInput" type="file" accept=".txt,.docx,.pdf" style="display:none" />
   </main>
-
+  <!-- PDF.js library components (required for PDF parsing) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script>
+  // Set worker URL required by PDF.js library
+  if (typeof pdfjsLib !== 'undefined') {pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js'; }
+</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script type="module" src="js/core.js"></script>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(console.warn);
-    }
-  </script>
+  <script> if ('serviceWorker' in navigator) {navigator.serviceWorker.register('sw.js').catch(console.warn);} </script>
 </body>
 </html>

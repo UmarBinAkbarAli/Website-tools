@@ -61,6 +61,15 @@ const countdownEl = $("countdown");
 const timeDisplay = $("timeLeft");
 const mirrorToggle = $("mirrorToggle"); 
 const repeatToggle = $("autoRepeat");
+const wpmDisplay = $("wpmDisplay");
+const bgColorPicker = $("bgColorPicker");
+const textColorPicker = $("textColorPicker");
+const greenScreenBtn = $("greenScreenBtn");
+const prevMarkerBtn = $("prevMarkerBtn");
+const nextMarkerBtn = $("nextMarkerBtn");
+const btnCaps = $("btnCaps");
+const btnAlign = $("btnAlign");
+const btnSpacing = $("btnSpacing");
 
 // NEW CONTROLS
 const widthControl = $("widthControl");
@@ -75,6 +84,9 @@ let scrollY = 0;
 let tick = null;
 let mirrored = false;
 let repeatMode = false;
+let isCaps = false;      // <-- PASTE THIS
+let isCentered = false;  // <-- PASTE THIS
+let spacingLevel = 1;    // <-- PASTE THIS
 
 // =============================
 // FIRST TIME LOGIN CHECK
@@ -252,6 +264,29 @@ $("logoutBtn").onclick = async () => {
 // TELEPROMPTER ENGINE
 // =============================
 
+function updateWPM() {
+  if (!wpmDisplay) return;
+  const text = textBox.innerText || "";
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount === 0) {
+    wpmDisplay.textContent = "0 WPM";
+    return;
+  }
+  
+  // Calculate total duration in minutes based on current speed
+  // Speed 1 ~= 33px/sec. Total Height / (Speed * 33) = Seconds.
+  const speed = parseFloat(speedControl.value) || 1;
+  const totalHeight = textBox.getBoundingClientRect().height;
+  const pixelsPerSecond = speed * 33.33;
+  const durationSeconds = totalHeight / pixelsPerSecond;
+  
+  if (durationSeconds <= 0) return;
+  
+  const wpm = Math.round(wordCount / (durationSeconds / 60));
+  wpmDisplay.textContent = `${wpm} WPM`;
+}
+
+
 function updateTimeRemaining() {
   if (!timeDisplay) return;
   
@@ -320,6 +355,7 @@ function startScroll() {
   }
 
   displayBox.style.display = "block";
+  updateWPM(); // <--- PASTE THIS HERE
   scriptBox.style.display = "none";
   if (toolbar) toolbar.style.display = "none";
   editBtn.style.display = "inline-block";
@@ -393,11 +429,12 @@ function loadSettings() {
   const sSize = localStorage.getItem(PREF_PREFIX + "size");
   const sMirror = localStorage.getItem(PREF_PREFIX + "mirror");
   const sRepeat = localStorage.getItem(PREF_PREFIX + "repeat");
-  
-  // New Settings
   const sWidth = localStorage.getItem(PREF_PREFIX + "width");
   const sFont = localStorage.getItem(PREF_PREFIX + "font");
   const sGuide = localStorage.getItem(PREF_PREFIX + "guide");
+  const sCaps = localStorage.getItem(PREF_PREFIX + "caps");
+  const sAlign = localStorage.getItem(PREF_PREFIX + "align");
+  const sSpacing = localStorage.getItem(PREF_PREFIX + "spacing");
 
   if (sSpeed) speedControl.value = sSpeed;
   if (sSize) {
@@ -413,6 +450,19 @@ function loadSettings() {
     repeatMode = true;
   }
   
+  // Load Saved Colors
+  const sBg = localStorage.getItem(PREF_PREFIX + "bgColor");
+  const sTxt = localStorage.getItem(PREF_PREFIX + "textColor");
+  
+  if (sBg) {
+    bgColorPicker.value = sBg;
+    document.documentElement.style.setProperty('--bg-color', sBg);
+  }
+  if (sTxt) {
+    textColorPicker.value = sTxt;
+    document.documentElement.style.setProperty('--text-color', sTxt);
+  }
+
   // Load Width
   if (sWidth) {
     widthControl.value = sWidth;
@@ -428,6 +478,25 @@ function loadSettings() {
   // Load Guide
   if (sGuide === "true") {
     guideToggle.checked = true;
+  }
+  
+  // All Caps
+  if(sCaps === "true") {
+    isCaps = true;
+    toggleTextClass("text-caps", true);
+    if(btnCaps) btnCaps.style.color = "#00e5ff";
+  }
+  //Alignment
+  if(sAlign === "true") {
+    isCentered = true;
+    toggleTextClass("text-center", true);
+    if(btnAlign) btnAlign.style.color = "#00e5ff";
+  }
+  // line-height
+  if(sSpacing) {
+    spacingLevel = parseInt(sSpacing);
+    toggleTextClass(`spacing-${spacingLevel}`, true);
+    if(btnSpacing) btnSpacing.innerHTML = spacingLevel === 1 ? "↕" : (spacingLevel === 2 ? "↕+" : "↕++");
   }
 
   applyTransform();
@@ -460,7 +529,10 @@ guideToggle.addEventListener("change", (e) => {
   }
 });
 
-speedControl.addEventListener("input", (e) => saveSetting("speed", e.target.value));
+speedControl.addEventListener("input", (e) => {
+  saveSetting("speed", e.target.value);
+  updateWPM(); // Updates WPM when you change speed
+});
 
 fontSizeControl.addEventListener("input", (e) => {
   textBox.style.fontSize = e.target.value + "px";
@@ -632,3 +704,196 @@ const modalEditor = document.getElementById('newText');
     document.execCommand("insertText", false, text);
   });
 });
+
+// =============================
+// MINOR FEATURES (Colors, Green Screen, Jump)
+// =============================
+
+// 1. Color Pickers
+function updateColors() {
+  document.documentElement.style.setProperty('--bg-color', bgColorPicker.value);
+  document.documentElement.style.setProperty('--text-color', textColorPicker.value);
+  saveSetting("bgColor", bgColorPicker.value);
+  saveSetting("textColor", textColorPicker.value);
+}
+
+bgColorPicker.addEventListener("input", updateColors);
+textColorPicker.addEventListener("input", updateColors);
+
+// 2. Green Screen Toggle
+let chromaMode = false;
+greenScreenBtn.addEventListener("click", () => {
+  chromaMode = !chromaMode;
+  if (chromaMode) {
+    document.body.classList.add("chroma-mode");
+    if(ensureFullscreenToggle) ensureFullscreenToggle(true); // Auto fullscreen
+  } else {
+    document.body.classList.remove("chroma-mode");
+  }
+});
+
+// =============================
+// MANUAL DRAG SCROLLING & TAP INTERACTION
+// =============================
+let isDragging = false;
+let startDragY = 0;
+let startScrollY = 0;
+let hasMoved = false; // Fix to separate Drags from Clicks
+
+// 1. Drag Start
+displayBox.addEventListener('mousedown', startDrag);
+displayBox.addEventListener('touchstart', startDrag, {passive: false});
+
+function startDrag(e) {
+  if(playing) return; // Only allow drag when paused
+  if(e.target.tagName === 'BUTTON') return; 
+
+  isDragging = true;
+  hasMoved = false; // Reset movement flag
+  
+  startDragY = e.pageY || e.touches[0].pageY;
+  startScrollY = scrollY;
+  
+  displayBox.classList.add('is-dragging');
+}
+
+// 2. Drag Move
+window.addEventListener('mousemove', doDrag);
+window.addEventListener('touchmove', doDrag, {passive: false});
+
+function doDrag(e) {
+  if(!isDragging) return;
+  
+  // Prevent browser scrolling
+  if(e.cancelable) e.preventDefault();
+
+  const currentY = e.pageY || e.touches[0].pageY;
+  const diff = currentY - startDragY;
+  
+  // Only mark as "moved" if dragged more than 5 pixels (prevents sensitive clicks)
+  if(Math.abs(diff) > 5) hasMoved = true;
+
+  // Update scroll
+  scrollY = startScrollY + diff;
+  applyTransform();
+}
+
+// 3. Drag End
+window.addEventListener('mouseup', endDrag);
+window.addEventListener('touchend', endDrag);
+
+function endDrag() {
+  isDragging = false;
+  displayBox.classList.remove('is-dragging');
+}
+
+// 4. Tap to Play (Smart Click Handler)
+// This replaces the old click listener. It checks 'hasMoved' to ensure
+// we don't accidentally Play/Pause when we just wanted to Drag.
+displayBox.addEventListener("click", (e) => {
+  if (hasMoved) {
+    hasMoved = false; // Reset and ignore the click
+    return; 
+  }
+  
+  if (e.target.tagName === 'BUTTON') return;
+  if (playBtn) playBtn.click();
+});
+
+// =============================
+// CHAPTER MARKER LOGIC
+// =============================
+
+function jumpToMarker(direction) {
+  // 1. Find all markers in the text
+  const markers = Array.from(textBox.querySelectorAll('hr.chapter-marker'));
+  
+  if (markers.length === 0) {
+    // If no markers, maybe jump by paragraph?
+    return; 
+  }
+
+  // 2. Get current scroll position (positive)
+  const currentScroll = Math.abs(scrollY);
+  
+  // 3. Find the visual center of the screen (where the user is reading)
+  const viewCenter = displayBox.clientHeight / 3; 
+  const currentReadingPos = currentScroll + viewCenter;
+
+  let targetY = null;
+
+  if (direction === 'next') {
+    // Find first marker BELOW current reading position
+    const next = markers.find(m => m.offsetTop > currentReadingPos + 50); // +50 buffer
+    if (next) targetY = next.offsetTop;
+  } else {
+    // Find first marker ABOVE current reading position (searching backwards)
+    // We reverse the array to find the closest one above
+    const prev = markers.reverse().find(m => m.offsetTop < currentReadingPos - 50);
+    if (prev) targetY = prev.offsetTop;
+  }
+
+  // 4. Execute Jump
+  if (targetY !== null) {
+    // Align marker to top-third of screen
+    scrollY = -(targetY - viewCenter);
+    applyTransform();
+  }
+}
+
+// Wire up buttons
+if(prevMarkerBtn) prevMarkerBtn.onclick = () => jumpToMarker('prev');
+if(nextMarkerBtn) nextMarkerBtn.onclick = () => jumpToMarker('next');
+
+// =============================
+// TEXT FORMATTING (Caps, Align, Spacing)
+// =============================
+
+// 1. All Caps Toggle
+if(btnCaps) {
+  btnCaps.onclick = () => {
+    isCaps = !isCaps;
+    toggleTextClass("text-caps", isCaps);
+    saveSetting("caps", isCaps);
+    btnCaps.style.color = isCaps ? "#00e5ff" : "white";
+  };
+}
+
+// 2. Alignment Toggle (Left <-> Center)
+if(btnAlign) {
+  btnAlign.onclick = () => {
+    isCentered = !isCentered;
+    toggleTextClass("text-center", isCentered);
+    saveSetting("align", isCentered);
+    btnAlign.style.color = isCentered ? "#00e5ff" : "white";
+  };
+}
+
+// 3. Line Spacing Cycle (Normal -> Wide -> Extra)
+if(btnSpacing) {
+  btnSpacing.onclick = () => {
+    // Remove current class
+    toggleTextClass(`spacing-${spacingLevel}`, false);
+    
+    // Cycle to next
+    spacingLevel++;
+    if(spacingLevel > 3) spacingLevel = 1;
+    
+    // Add new class
+    toggleTextClass(`spacing-${spacingLevel}`, true);
+    saveSetting("spacing", spacingLevel);
+    
+    // Visual indicator (optional)
+    btnSpacing.innerHTML = spacingLevel === 1 ? "↕" : (spacingLevel === 2 ? "↕+" : "↕++");
+  };
+}
+
+// Helper: Applies class to BOTH Editor and Prompter
+function toggleTextClass(className, active) {
+  const elements = [textBox, scriptBox]; // Apply to both
+  elements.forEach(el => {
+    if(!el) return;
+    if(active) el.classList.add(className);
+    else el.classList.remove(className);
+  });
+}
