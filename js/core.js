@@ -368,9 +368,14 @@ function startScroll() {
 
   clearInterval(tick);
   tick = setInterval(() => {
-    scrollY -= parseFloat(speedControl.value);
+    scrollY -= parseFloat(speedControl.value || 1);
     applyTransform();
     updateTimeRemaining();
+
+    // keep voice module updated with scroll position on every tick
+    if (voiceModule && typeof voiceModule.setScrollY === "function") {
+      try { voiceModule.setScrollY(scrollY); } catch (e) { /* ignore */ }
+    }
 
     const contentHeight = textBox.getBoundingClientRect().height;
     const containerHeight = displayBox.getBoundingClientRect().height;
@@ -932,9 +937,26 @@ startScroll = function() {
     voiceModule.buildWordMap();
   }
   
-  // ENABLE VOICE BUTTONS when playing
-  if (voiceStartBtn) voiceStartBtn.disabled = false;
-  if (voiceResetBtn) voiceResetBtn.disabled = false;
+  // ENABLE VOICE MODULE when play starts (modified)
+  if (typeof startScroll === "function" && voiceModule) {
+    const originalStartScroll = startScroll;
+    startScroll = function() {
+      originalStartScroll.call(this);
+
+      try {
+        console.log("[Core] Building voice word map from startScroll");
+        const mapCount = voiceModule.buildWordMap && voiceModule.buildWordMap();
+        if (!mapCount) console.warn("[Core] voice buildWordMap returned 0 or undefined");
+        if (voiceModule.setScrollY) voiceModule.setScrollY(scrollY);
+      } catch (e) {
+        console.warn("[Core] voice init in startScroll failed", e);
+      }
+
+      // Enable voice UI
+      if (voiceStartBtn) voiceStartBtn.disabled = false;
+      if (voiceResetBtn) voiceResetBtn.disabled = false;
+    };
+  }
 };
 
 // Disable voice buttons when stopping

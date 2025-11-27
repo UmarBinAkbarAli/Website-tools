@@ -63,30 +63,50 @@ export function initVoiceHighlighter(opts = {}) {
     try {
       const text = (textBox.textContent || textBox.innerText || "").trim();
       const words = text.split(/\s+/).filter(w => w.length > 0);
-      
-      log("buildWordMap: raw text length", text.length);
-      log("buildWordMap: word count", words.length);
-      
+
+      console.log("[Voice] buildWordMap: raw text length", text.length, "words:", words.length);
+
       textBox.innerHTML = words
         .map((w, i) => `<span class="voice-word" data-idx="${i}">${escapeHtml(w)}</span>`)
         .join(" ");
-      
+
       wordSpans = Array.from(textBox.querySelectorAll(".voice-word")).map((el, i) => ({
         el,
         idx: i,
-        text: el.innerText.toLowerCase()
+        text: (el.innerText || el.textContent || "").toLowerCase()
       }));
-      
-      log("buildWordMap: wordSpans created", wordSpans.length);
-      log("First 5 words:", wordSpans.slice(0, 5).map(w => w.text));
-      
+
+      // Reset tracking
       lastMatchedIndex = -1;
       tempMatchedIndex = -1;
-      voiceScrollY = 0;
+      voiceScrollY = voiceScrollY || 0;
       hl.style.display = "none";
+
+      // Estimate current reading index based on visible area so matching prefers nearby words
+      try {
+        const viewHeight = (displayBox && displayBox.clientHeight) ? displayBox.clientHeight : 0;
+        const viewCenter = viewHeight * 0.35; // top-third reading sweet spot
+        const contentOffset = Math.max(0, -voiceScrollY || 0);
+        const currentReadingPos = contentOffset + viewCenter;
+
+        let nearest = null;
+        for (const w of wordSpans) {
+          const d = Math.abs((w.el.offsetTop || 0) - currentReadingPos);
+          if (!nearest || d < nearest.d) nearest = { idx: w.idx, d };
+        }
+        if (nearest) {
+          lastMatchedIndex = Math.max(0, nearest.idx - 1);
+          tempMatchedIndex = lastMatchedIndex;
+          console.log("[Voice] buildWordMap: estimated base index", lastMatchedIndex, "for readingPos", currentReadingPos);
+        }
+      } catch (e) {
+        // non-fatal
+        console.warn("[Voice] buildWordMap: estimate failed", e);
+      }
+
       return wordSpans.length;
     } catch (e) {
-      console.error("buildWordMap failed:", e);
+      console.error("[Voice] buildWordMap failed:", e);
       return 0;
     }
   }
@@ -156,25 +176,43 @@ export function initVoiceHighlighter(opts = {}) {
     const candidate = wordSpans[candidateIdx];
     if (!candidate) return -Infinity;
     
-    let score = levenshtein(spokenWord, candidate.text);
+    // lowercase inputs
+    const s = (spokenWord || "").toLowerCase();
+    const c = (candidate.text || "").toLowerCase();
 
-    const expected = baseIndex + 1;
+    // base similarity (use levenshtein distance normalized)
+    let sim = 1 - (levenshtein(s, c) / Math.max(1, Math.max(s.length, c.length)));
+    // normalize to -1..1 style by centering around 0
+    let score = sim;
+
+    // exact match strong boost
+    if (s === c) score += 0.35;
+
+    // prefer candidates just ahead of base index
+    const expected = (baseIndex == null ? -1 : baseIndex) + 1;
     const distance = candidateIdx - expected;
     const absDist = Math.abs(distance);
 
-    const distPenalty = Math.min(0.9, absDist / Math.max(1, LOOKAHEAD * 0.8));
-    score = score - distPenalty * 0.6;
+    // penalize distance but cap penalty
+    const distPenalty = Math.min(1, absDist / Math.max(1, Math.floor((LOOKAHEAD || 6) * 0.9)));
+    score -= distPenalty * 0.5;
 
-    if (distance <= 0) score -= 0.15;
+    // small penalty if candidate before or equal to expected (we want forward flow)
+    if (distance <= 0) score -= 0.12;
 
+    // don't over-penalize very short common words if they match exactly
+    if (s.length <= 3 && s === c) score += 0.05;
+
+    // reward continuity with previous spoken word (optional)
     if (prevSpokenWord && candidateIdx > 0) {
       const prevCandidate = wordSpans[candidateIdx - 1];
       if (prevCandidate) {
-        const prevSim = levenshtein(prevSpokenWord, prevCandidate.text);
-        if (prevSim > 0.6) score += 0.18;
+        const prevSim = 1 - (levenshtein((prevSpokenWord||"").toLowerCase(), prevCandidate.text) / Math.max(1, Math.max(prevSpokenWord.length, prevCandidate.text.length)));
+        if (prevSim > 0.6) score += 0.12;
       }
     }
 
+    // final scaling
     return score;
   }
 
@@ -367,10 +405,9 @@ export function initVoiceHighlighter(opts = {}) {
     },
     
     setScrollY(y) {
-      if (!isRecording) {
-        voiceScrollY = y;
-        applyVoiceTransform();
-      }
+      voiceScrollY = Number(y) || 0;
+      // optional: keep tempMatchedIndex in sync if undefined
+      // console.log("[Voice] setScrollY:", voiceScrollY);
     },
     
     setMirrored(v) {
